@@ -1,0 +1,2511 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pflegedokumentation &ndash; Übungskurve</title>
+<style>
+:root{
+  --tief:#0b3a5d;
+  --band:#14567f;
+  --flaeche:#e8edf2;
+  --papier:#ffffff;
+  --linie:#c3d0da;
+  --linie-fein:#dde5eb;
+  --akzent:#0f7b84;
+  --akzent-hell:#e2f1f2;
+  --alarm:#a4251c;
+  --alarm-hell:#fbe9e7;
+  --text:#152530;
+  --grau:#5c6f7d;
+  --puls:#c0392b;
+  --temp:#1f5fb0;
+  --rr:#1d2b33;
+  --sans:"Segoe UI",Roboto,"Helvetica Neue",system-ui,sans-serif;
+  --daten:ui-monospace,"SF Mono","Roboto Mono",Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans);
+  color:var(--text);
+  background:var(--flaeche);
+  font-size:15px;
+  line-height:1.45;
+  -webkit-text-size-adjust:100%;
+}
+
+/* ---------- Patientenband ---------- */
+.band{
+  background:linear-gradient(180deg,var(--tief),var(--band));
+  color:#fff;
+  padding:.55rem .9rem .5rem;
+  display:flex; align-items:center; gap:.75rem;
+}
+.band-kopf{display:flex; flex-wrap:wrap; align-items:baseline; gap:.35rem .9rem}
+.band-name{font-size:1.15rem; font-weight:600; letter-spacing:.01em}
+.band-name .leer{opacity:.55; font-weight:400; font-style:italic}
+.band-daten{
+  font-family:var(--daten); font-size:.78rem; opacity:.92;
+  display:flex; flex-wrap:wrap; gap:.15rem .85rem; margin-top:.2rem;
+}
+.band-daten b{font-weight:600; opacity:.72; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase; margin-right:.25rem}
+.chips{display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.35rem}
+.chip{
+  font-size:.72rem; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+  padding:.16rem .5rem; border-radius:2px; background:#fff; color:var(--tief);
+}
+.chip.warn{background:#ffd9d4; color:#7d1a13}
+.chip.iso{background:#ffe9b8; color:#6b4a00}
+
+/* ---------- Werkzeugleiste ---------- */
+.werkzeuge{
+  background:#f7fafc; border-bottom:1px solid var(--linie);
+  padding:.5rem .9rem; display:flex; flex-wrap:wrap; gap:.5rem .75rem; align-items:center;
+}
+.kopfbereich{
+  position:sticky; top:0; z-index:30;
+  box-shadow:0 2px 6px rgba(11,58,93,.22);
+}
+.hz-feld{display:flex; align-items:center; gap:.4rem}
+.hz-feld label{font-size:.78rem; color:var(--grau); font-weight:600; letter-spacing:.03em; text-transform:uppercase}
+.hz-feld input{width:5.5rem; font-family:var(--daten); text-transform:uppercase; text-align:center}
+.werkzeuge .hinweis{font-size:.78rem; color:var(--grau); margin-left:auto}
+button{
+  font:inherit; font-size:.86rem; font-weight:600;
+  padding:.45rem .8rem; min-height:38px;
+  border:1px solid var(--linie); border-radius:2px; background:#fff; color:var(--text);
+  cursor:pointer;
+}
+button:hover{background:var(--akzent-hell); border-color:var(--akzent)}
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+  outline:2px solid var(--akzent); outline-offset:1px;
+}
+button.haupt{background:var(--akzent); border-color:var(--akzent); color:#fff}
+button.haupt:hover{background:#0c666e}
+button.klein{padding:.28rem .5rem; min-height:32px; font-size:.78rem; font-weight:500}
+button.loeschen{color:var(--alarm); border-color:#e3c4c1}
+button.loeschen:hover{background:var(--alarm-hell); border-color:var(--alarm)}
+
+/* ---------- Layout ---------- */
+.rahmen{display:flex; align-items:flex-start; gap:0}
+nav{
+  width:196px; flex:0 0 196px; background:#f2f6f9;
+  border-right:1px solid var(--linie); min-height:calc(100vh - 120px);
+  padding:.6rem 0;
+  position:sticky; top:var(--kopfhoehe,104px);
+}
+nav button{
+  display:block; width:100%; text-align:left; border:0; border-left:3px solid transparent;
+  border-radius:0; background:none; padding:.65rem .85rem; font-weight:500; color:var(--text);
+}
+nav button:hover{background:#e5edf3}
+nav button[aria-current="page"]{
+  background:#fff; border-left-color:var(--akzent); color:var(--tief); font-weight:700;
+}
+nav .gruppe{
+  font-size:.68rem; letter-spacing:.09em; text-transform:uppercase; color:var(--grau);
+  padding:.7rem .9rem .25rem; font-weight:700;
+}
+main{flex:1; min-width:0; padding:1rem .9rem 4rem}
+
+/* ---------- Karten & Felder ---------- */
+.seite{display:none}
+.seite.aktiv{display:block}
+.seite > h2{
+  font-size:1.05rem; margin:0 0 .8rem; font-weight:600; color:var(--tief);
+  padding-bottom:.4rem; border-bottom:2px solid var(--tief);
+}
+.karte{
+  background:var(--papier); border:1px solid var(--linie); border-radius:3px;
+  margin-bottom:1rem;
+}
+.karte > h3{
+  margin:0; font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700;
+  color:var(--tief); background:#eef3f7; border-bottom:1px solid var(--linie);
+  padding:.45rem .75rem;
+  display:flex; justify-content:space-between; align-items:center; gap:.5rem;
+}
+.karte-inhalt{padding:.8rem .75rem}
+.felder{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.7rem .9rem}
+.feld{display:flex; flex-direction:column; gap:.2rem; min-width:0}
+.feld.breit{grid-column:1/-1}
+.feld label{font-size:.74rem; font-weight:600; letter-spacing:.03em; color:var(--grau); text-transform:uppercase}
+input,select,textarea{
+  font-family:var(--sans); font-size:16px; color:var(--text);
+  padding:.42rem .5rem; border:1px solid var(--linie); border-radius:2px;
+  background:#fff; width:100%; min-height:38px;
+}
+input[type="date"],input[type="time"],input[type="number"]{font-family:var(--daten); font-size:15px}
+textarea{min-height:88px; resize:vertical; line-height:1.5}
+input[type="checkbox"]{width:22px; height:22px; min-height:0; accent-color:var(--akzent)}
+.auto{background:#f4f7f9; color:var(--grau); font-family:var(--daten)}
+.pruef{display:flex; align-items:center; gap:.5rem; padding:.25rem 0}
+.pruef label{font-size:.9rem; text-transform:none; letter-spacing:0; color:var(--text); font-weight:400}
+.notiz{font-size:.8rem; color:var(--grau); margin:.5rem 0 0}
+
+/* ---------- Tabellen ---------- */
+.tab-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch}
+table{border-collapse:collapse; width:100%; min-width:640px}
+th{
+  font-size:.68rem; letter-spacing:.06em; text-transform:uppercase; color:var(--grau);
+  text-align:left; font-weight:700; padding:.35rem .3rem; border-bottom:1px solid var(--linie);
+  white-space:nowrap; background:#f7fafc;
+}
+td{border-bottom:1px solid var(--linie-fein); padding:.15rem .2rem; vertical-align:middle}
+td input,td select{border:1px solid transparent; background:transparent; padding:.35rem .3rem; min-height:36px}
+td input:hover,td select:hover{border-color:var(--linie-fein); background:#fbfdfe}
+td input:focus,td select:focus{border-color:var(--akzent); background:#fff}
+td input[type="number"],td .zahl{font-family:var(--daten); text-align:right}
+tr:nth-child(even) td{background:#fcfdfe}
+.leerzeile{padding:1.1rem .5rem; color:var(--grau); font-size:.88rem; text-align:center}
+
+/* ---------- Fieberkurve ---------- */
+.kurve-huelle{overflow-x:auto; background:#fff; padding:.4rem}
+.legende{display:flex; flex-wrap:wrap; gap:.9rem; font-size:.78rem; color:var(--grau); padding:.5rem .75rem 0}
+.legende span{display:flex; align-items:center; gap:.35rem}
+.legende i{width:14px; height:3px; border-radius:2px; display:inline-block}
+
+/* ---------- Score-Anzeige ---------- */
+.score{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:.6rem;
+  background:var(--akzent-hell); border-left:3px solid var(--akzent);
+  padding:.5rem .7rem; margin-top:.7rem;
+}
+.score .wert{font-family:var(--daten); font-size:1.5rem; font-weight:700; color:var(--tief)}
+.score .deutung{font-size:.88rem}
+
+/* ---------- Eintragskarten (Wunden, Bericht) ---------- */
+.eintrag{border:1px solid var(--linie); border-radius:3px; margin-bottom:.75rem; background:#fff}
+.eintrag-kopf{
+  display:flex; justify-content:space-between; align-items:center; gap:.5rem;
+  background:#f7fafc; border-bottom:1px solid var(--linie-fein); padding:.35rem .6rem;
+  font-family:var(--daten); font-size:.8rem; color:var(--tief); font-weight:600;
+}
+.eintrag-inhalt{padding:.7rem .6rem}
+
+.logo{
+  max-height:54px; max-width:190px; background:#fff; padding:.25rem .4rem;
+  border-radius:3px; flex:0 0 auto; object-fit:contain;
+}
+.band-text{flex:1; min-width:0}
+.wasserzeichen{
+  margin:1.6rem 0 .4rem; padding-top:.5rem; border-top:1px solid var(--linie-fein);
+  font-size:.72rem; letter-spacing:.04em; color:#8fa3b0; text-align:center; font-style:italic;
+}
+td.gruppe-titel{
+  font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700;
+  color:var(--tief); background:#eef3f7; padding:.45rem .5rem; border-top:1px solid var(--linie);
+}
+tr:nth-child(even) td.gruppe-titel{background:#eef3f7}
+#tabHandlungen{min-width:1180px}
+/* Bettenplan */
+.zimmerraster{display:grid; grid-template-columns:repeat(auto-fit,minmax(370px,1fr)); gap:.8rem}
+.zimmer{background:var(--papier); border:1px solid var(--linie); border-radius:3px; overflow:hidden}
+.zimmer > h4{
+  margin:0; display:flex; justify-content:space-between; align-items:center; gap:.5rem;
+  font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:var(--tief);
+  background:#eef3f7; border-bottom:1px solid var(--linie); padding:.45rem .7rem;
+}
+.zimmer > h4 span{font-family:var(--daten); font-size:.72rem; font-weight:500; color:var(--grau); letter-spacing:0; text-transform:none}
+.bett{display:flex; gap:.6rem; padding:.6rem .7rem; border-bottom:1px solid var(--linie-fein); align-items:flex-start}
+.zimmer .bett:last-child, .zimmer .sperr-panel:last-child{border-bottom:0}
+.bett.belegt, .bett.leer, .bett.gesperrt{cursor:pointer}
+.bett.belegt:hover, .bett.leer:hover{background:var(--akzent-hell)}
+.bett.gewaehlt{background:#e2f1f2; box-shadow:inset 3px 0 0 var(--akzent)}
+.bett.leer, .bett.gesperrt{background:#f7f9fb}
+.bett-nr{
+  font-family:var(--daten); font-size:.7rem; font-weight:700; color:var(--grau); background:#e7eef4;
+  border-radius:2px; padding:.2rem .45rem; white-space:nowrap; margin-top:.15rem;
+}
+.bett-inhalt{flex:1; min-width:0}
+.bett-name{font-weight:600; display:flex; align-items:center; gap:.4rem; flex-wrap:wrap}
+.bett-zeile{font-family:var(--daten); font-size:.76rem; color:var(--grau)}
+.bett-diag{font-size:.88rem; margin:.2rem 0 .3rem}
+.bett-knoepfe{display:flex; flex-direction:column; gap:.3rem; align-items:stretch}
+.sperr-panel{padding:.6rem .7rem .7rem; background:#eef3f7; border-bottom:1px solid var(--linie-fein); display:grid; gap:.5rem}
+.sperr-panel .reihe{display:flex; gap:.5rem; flex-wrap:wrap; align-items:center}
+.sperr-panel select, .sperr-panel input{width:auto; flex:1 1 150px; min-width:130px}
+.sperrgrund{font-size:.8rem; font-weight:600; color:#6b4a00; background:#ffe9b8; padding:.15rem .45rem; border-radius:2px; display:inline-block}
+.warnknopf{
+  background:var(--alarm); color:#fff; border:0; border-radius:50%;
+  width:23px; height:23px; min-height:23px; padding:0; line-height:1;
+  font-weight:700; font-size:.85rem; cursor:pointer; flex:0 0 auto;
+}
+.warnknopf:hover{background:#7d1a13}
+/* Meldungsfenster */
+.modal-hg{position:fixed; inset:0; background:rgba(11,58,93,.45); display:flex; align-items:center; justify-content:center; z-index:60; padding:1rem}
+.modal-hg[hidden]{display:none}
+.modal{background:#fff; border-radius:4px; max-width:470px; width:100%; box-shadow:0 10px 34px rgba(0,0,0,.32); overflow:hidden}
+.modal h4{margin:0; background:var(--alarm); color:#fff; padding:.6rem .8rem; font-size:.92rem; letter-spacing:.02em}
+.modal .modal-inhalt{padding:.9rem .8rem; font-size:.92rem}
+.modal .modal-fuss{padding:0 .8rem .8rem; display:flex; justify-content:flex-end}
+#tabStation{min-width:1150px}
+#tabStation tbody tr{cursor:pointer}
+#tabStation tbody tr:hover td{background:var(--akzent-hell)}
+#tabStation tr.gewaehlt td{background:#e2f1f2; box-shadow:inset 3px 0 0 var(--akzent)}
+#tabStation td{padding:.4rem .35rem}
+.mini{
+  font-size:.7rem; font-weight:600; letter-spacing:.02em; padding:.12rem .38rem; border-radius:2px;
+  background:#e7eef4; color:var(--tief); display:inline-block; margin:1px 3px 1px 0; white-space:nowrap;
+}
+.mini.warn{background:#fbe1dd; color:#7d1a13}
+.mini.iso{background:#ffe9b8; color:#6b4a00}
+.mini.op{background:#ddeee4; color:#1c5c37}
+.frei{color:var(--grau); font-style:italic}
+.stationskopf{font-family:var(--daten); font-size:.74rem; font-weight:500; color:var(--grau); text-transform:none; letter-spacing:0}
+td.schicht-start, th.schicht-start{border-left:1px solid var(--linie)}
+.hkopf{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.7rem .9rem; padding:.8rem .75rem .2rem}
+
+@media (max-width:860px){
+  .rahmen{flex-direction:column}
+  nav{
+    width:100%; flex:none; min-height:0; position:sticky; top:var(--kopfhoehe,104px);
+    border-right:0; border-bottom:1px solid var(--linie);
+    display:flex; overflow-x:auto; padding:0;
+  }
+  nav .gruppe{display:none}
+  nav button{
+    width:auto; white-space:nowrap; border-left:0; border-bottom:3px solid transparent;
+    padding:.7rem .8rem;
+  }
+  nav button[aria-current="page"]{border-left:0; border-bottom-color:var(--akzent)}
+  main{padding:.8rem .6rem 4rem}
+}
+
+@media (max-width:520px){
+  .logo{max-height:38px; max-width:112px}
+  .band-name{font-size:1rem}
+}
+
+@media print{
+  .werkzeuge,nav,.nicht-drucken{display:none !important}
+  .kopfbereich{position:static; box-shadow:none}
+  .band{position:static; box-shadow:none; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+  body{background:#fff; font-size:11px}
+  .seite{display:block !important; page-break-after:always}
+  .karte{break-inside:avoid}
+  table{min-width:0}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+</style>
+</head>
+<body>
+
+<div class="kopfbereich">
+<header class="band">
+  <img id="logoBild" class="logo" alt="Logo der Einrichtung" hidden>
+  <div class="band-text">
+  <div class="band-kopf">
+    <div class="band-name" id="bandName"><span class="leer">Kein Patient erfasst</span></div>
+    <div class="chips" id="bandChips"></div>
+  </div>
+  <div class="band-daten">
+    <span><b>Geb.</b><span id="bandGeb">–</span></span>
+    <span><b>Alter</b><span id="bandAlter">–</span></span>
+    <span><b>Fall-Nr.</b><span id="bandFall">–</span></span>
+    <span><b>Station</b><span id="bandStation">–</span></span>
+    <span><b>Zimmer</b><span id="bandZimmer">–</span></span>
+    <span><b>Aufnahme</b><span id="bandAufnahme">–</span></span>
+    <span><b>Hauptdiagnose</b><span id="bandDiagnose">–</span></span>
+  </div>
+  </div>
+</header>
+
+<div class="werkzeuge nicht-drucken">
+  <div class="hz-feld">
+    <label for="hzGlobal">Handzeichen</label>
+    <input id="hzGlobal" maxlength="6" placeholder="z.B. MS" data-b="meta.hz">
+  </div>
+  <button type="button" id="btnLogo">Logo laden</button>
+  <button type="button" id="btnLogoWeg" hidden>Logo entfernen</button>
+  <input type="file" id="logoDatei" accept="image/*" hidden>
+  <button type="button" id="btnStation">Stationsübersicht</button>
+  <button type="button" id="btnLeer">Patient leeren</button>
+  <button type="button" id="btnFall">Station zurücksetzen</button>
+  <button type="button" id="btnDruck" class="haupt">Drucken / PDF</button>
+  <span class="hinweis">Nichts wird gespeichert – beim Neuladen steht die Station wieder im Ausgangszustand.</span>
+</div>
+</div>
+
+<div class="rahmen">
+<nav aria-label="Bereiche der Kurve">
+  <div class="gruppe">Station</div>
+  <button type="button" data-seite="station" aria-current="page">Stationsübersicht</button>
+  <div class="gruppe">Patient</div>
+  <button type="button" data-seite="stamm">Stammdaten</button>
+  <button type="button" data-seite="anamnese">Anamnese</button>
+  <div class="gruppe">Verlauf</div>
+  <button type="button" data-seite="vital">Kurve &amp; Tagesverlauf</button>
+  <button type="button" data-seite="medikation">Medikation</button>
+  <button type="button" data-seite="anordnungen">Ärztliche Anordnungen</button>
+  <button type="button" data-seite="handlungen">Pflegehandlungen</button>
+  <button type="button" data-seite="assessment">Assessments</button>
+  <button type="button" data-seite="wunde">Wunddokumentation</button>
+  <button type="button" data-seite="bericht">Pflegebericht</button>
+</nav>
+
+<main>
+
+<!-- ============ STATIONSÜBERSICHT ============ -->
+<section class="seite aktiv" id="seite-station">
+  <h2>Stationsübersicht</h2>
+  <div class="karte">
+    <h3>Belegung <span class="stationskopf" id="stationKopf"></span></h3>
+    <div class="karte-inhalt">
+      <div class="zimmerraster" id="zimmerRaster"></div>
+    </div>
+    <div class="karte-inhalt" style="padding-top:0">
+      <p class="notiz">Ein belegtes Bett antippen öffnet die Kurve dieses Patienten – die eingetragenen Daten bleiben beim Wechseln erhalten, solange die Datei geöffnet ist. Ein freies Bett antippen bietet die Aufnahme eines neuen Patienten oder das Sperren des Platzes an. Im Feld „Pflege“ trägt jede Schicht ein, wer zuständig ist. Die Merkmale ergeben sich aus dem, was in der jeweiligen Kurve dokumentiert ist.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STAMMDATEN ============ -->
+<section class="seite" id="seite-stamm">
+  <h2>Stammdaten und Aufnahme</h2>
+
+  <div class="karte">
+    <h3>Person</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld"><label for="s-nachname">Nachname</label><input id="s-nachname" data-b="stamm.nachname"></div>
+        <div class="feld"><label for="s-vorname">Vorname</label><input id="s-vorname" data-b="stamm.vorname"></div>
+        <div class="feld"><label for="s-geb">Geburtsdatum</label><input type="date" id="s-geb" data-b="stamm.geb"></div>
+        <div class="feld"><label for="s-alter">Alter</label><input id="s-alter" class="auto" readonly tabindex="-1"></div>
+        <div class="feld"><label for="s-geschlecht">Geschlecht</label>
+          <select id="s-geschlecht" data-b="stamm.geschlecht">
+            <option value=""></option><option>weiblich</option><option>männlich</option><option>divers</option>
+          </select></div>
+        <div class="feld"><label for="s-sprache">Sprache / Verständigung</label><input id="s-sprache" data-b="stamm.sprache" placeholder="z.B. deutsch, schwerhörig"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Fall und Unterbringung</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld"><label for="s-fall">Fallnummer</label><input id="s-fall" data-b="stamm.fall" placeholder="z.B. 1024577"></div>
+        <div class="feld"><label for="s-station">Station</label><input id="s-station" data-b="stamm.station" placeholder="z.B. 3A Innere"></div>
+        <div class="feld"><label for="s-zimmer">Zimmer / Bett</label><input id="s-zimmer" data-b="stamm.zimmer" placeholder="z.B. 312 / 2"></div>
+        <div class="feld"><label for="s-aufnDatum">Aufnahmedatum</label><input type="date" id="s-aufnDatum" data-b="stamm.aufnDatum"></div>
+        <div class="feld"><label for="s-aufnZeit">Aufnahmezeit</label><input type="time" id="s-aufnZeit" data-b="stamm.aufnZeit"></div>
+        <div class="feld"><label for="s-aufnArt">Aufnahmeart</label>
+          <select id="s-aufnArt" data-b="stamm.aufnArt">
+            <option value=""></option><option>Notaufnahme</option><option>Einweisung Hausarzt</option>
+            <option>geplante Aufnahme</option><option>Verlegung intern</option><option>Verlegung extern</option>
+          </select></div>
+        <div class="feld"><label for="s-kasse">Krankenkasse</label><input id="s-kasse" data-b="stamm.kasse"></div>
+        <div class="feld"><label for="s-hausarzt">Hausarzt</label><input id="s-hausarzt" data-b="stamm.hausarzt"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Medizinische Kerndaten</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld breit"><label for="s-diagnose">Hauptdiagnose</label><input id="s-diagnose" data-b="stamm.diagnose" placeholder="Aufnahme- bzw. Hauptdiagnose"></div>
+        <div class="feld breit"><label for="s-nebendiagnosen">Nebendiagnosen</label><textarea id="s-nebendiagnosen" data-b="stamm.nebendiagnosen" placeholder="eine Diagnose pro Zeile"></textarea></div>
+        <div class="feld"><label for="s-op">Operation / Eingriff</label><input id="s-op" data-b="stamm.op" placeholder="z.B. Hüft-TEP rechts"></div>
+        <div class="feld"><label for="s-opDatum">OP-Datum</label><input type="date" id="s-opDatum" data-b="stamm.opDatum"></div>
+        <div class="feld"><label for="s-groesse">Größe (cm)</label><input type="number" id="s-groesse" data-b="stamm.groesse" inputmode="numeric"></div>
+        <div class="feld"><label for="s-gewicht">Gewicht (kg)</label><input type="number" step="0.1" id="s-gewicht" data-b="stamm.gewicht" inputmode="decimal"></div>
+        <div class="feld"><label for="s-bmi">BMI</label><input id="s-bmi" class="auto" readonly tabindex="-1"></div>
+        <div class="feld breit"><label for="s-allergien">Allergien / Unverträglichkeiten</label><input id="s-allergien" data-b="stamm.allergien" placeholder="z.B. Penicillin, Pflaster – leer lassen wenn keine bekannt"></div>
+        <div class="feld"><label for="s-isolation">Isolation</label>
+          <select id="s-isolation" data-b="stamm.isolation">
+            <option value="">keine</option><option>Kontaktisolierung</option><option>Tröpfchenisolierung</option>
+            <option>Aerogene Isolierung</option><option>Schutzisolierung</option>
+          </select></div>
+        <div class="feld"><label for="s-keim">Erreger / Grund</label><input id="s-keim" data-b="stamm.keim" placeholder="z.B. MRSA Nasenabstrich"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Bezugspersonen und Vorsorge</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld"><label for="s-angehName">Angehörige/r</label><input id="s-angehName" data-b="stamm.angehName"></div>
+        <div class="feld"><label for="s-angehBez">Beziehung</label><input id="s-angehBez" data-b="stamm.angehBez" placeholder="z.B. Tochter"></div>
+        <div class="feld"><label for="s-angehTel">Telefon</label><input id="s-angehTel" data-b="stamm.angehTel" inputmode="tel"></div>
+        <div class="feld"><label for="s-betreuung">Betreuung / Vollmacht</label>
+          <select id="s-betreuung" data-b="stamm.betreuung">
+            <option value=""></option><option>keine</option><option>Vorsorgevollmacht</option>
+            <option>gesetzliche Betreuung</option><option>ungeklärt</option>
+          </select></div>
+        <div class="feld"><label for="s-patverf">Patientenverfügung</label>
+          <select id="s-patverf" data-b="stamm.patverf">
+            <option value=""></option><option>liegt vor</option><option>liegt nicht vor</option><option>wird nachgereicht</option>
+          </select></div>
+        <div class="feld"><label for="s-auskunft">Auskunft erlaubt an</label><input id="s-auskunft" data-b="stamm.auskunft"></div>
+        <div class="feld breit">
+          <label>Auskunftssperre</label>
+          <div class="pruef">
+            <input type="checkbox" id="s-sperre" data-b="stamm.auskunftssperre">
+            <label for="s-sperre">Patient hat eine Auskunftssperre erteilt</label>
+          </div>
+        </div>
+        <div class="feld breit"><label for="s-sperreNotiz">Vermerk zur Auskunftssperre</label><input id="s-sperreNotiz" data-b="stamm.sperreNotiz" placeholder="z.B. keine Auskunft am Telefon, auch nicht an Angehörige"></div>
+      </div>
+      <p class="notiz">Übungsdaten. Bitte keine echten Patientendaten eintragen.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ANAMNESE ============ -->
+<section class="seite" id="seite-anamnese">
+  <h2>Pflegeanamnese</h2>
+
+  <div class="karte">
+    <h3>Vorerkrankungen und Vorgeschichte</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld breit"><label for="a-vor">Vorerkrankungen</label><textarea id="a-vor" data-b="anam.vorerkrankungen" placeholder="chronische Erkrankungen, Operationen, Krankenhausaufenthalte"></textarea></div>
+        <div class="feld breit"><label for="a-hausmed">Medikation vor Aufnahme</label><textarea id="a-hausmed" data-b="anam.hausmedikation" placeholder="mitgebrachte Medikamente, wer richtet sie zu Hause"></textarea></div>
+        <div class="feld"><label for="a-nikotin">Nikotin</label><input id="a-nikotin" data-b="anam.nikotin"></div>
+        <div class="feld"><label for="a-alkohol">Alkohol</label><input id="a-alkohol" data-b="anam.alkohol"></div>
+        <div class="feld"><label for="a-impf">Impfstatus</label><input id="a-impf" data-b="anam.impf"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Sozialanamnese</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld"><label for="a-wohn">Wohnsituation</label><input id="a-wohn" data-b="anam.wohnsituation" placeholder="z.B. EG-Wohnung, 12 Stufen"></div>
+        <div class="feld"><label for="a-lebt">Lebt mit</label><input id="a-lebt" data-b="anam.lebtMit" placeholder="allein, Ehepartner, WG"></div>
+        <div class="feld"><label for="a-beruf">Beruf / Tätigkeit</label><input id="a-beruf" data-b="anam.beruf"></div>
+        <div class="feld"><label for="a-pflegegrad">Pflegegrad</label>
+          <select id="a-pflegegrad" data-b="anam.pflegegrad">
+            <option value=""></option><option>keiner</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>beantragt</option>
+          </select></div>
+        <div class="feld"><label for="a-dienst">Pflegedienst / Hilfen</label><input id="a-dienst" data-b="anam.pflegedienst" placeholder="ambulanter Dienst, Essen auf Rädern"></div>
+        <div class="feld breit"><label for="a-versorgung">Versorgung nach Entlassung</label><textarea id="a-versorgung" data-b="anam.versorgung" placeholder="Was ist geplant? Wer unterstützt? Was fehlt noch?"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Selbstversorgung und Ressourcen</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld breit"><label for="a-koerper">Körperpflege</label><textarea id="a-koerper" data-b="anam.koerperpflege" placeholder="selbstständig / Teilübernahme / Übernahme – und was genau"></textarea></div>
+        <div class="feld breit"><label for="a-mobil">Mobilität und Transfer</label><textarea id="a-mobil" data-b="anam.mobilitaet" placeholder="Gehstrecke, Hilfsmittel, Transfer, Sturzgeschichte"></textarea></div>
+        <div class="feld breit"><label for="a-ernaehrung">Essen und Trinken</label><textarea id="a-ernaehrung" data-b="anam.ernaehrung" placeholder="Kostform, Schluckstörung, Prothese, Trinkmenge, Vorlieben"></textarea></div>
+        <div class="feld breit"><label for="a-aussch">Ausscheidung</label><textarea id="a-aussch" data-b="anam.ausscheidung" placeholder="Kontinenz, Hilfsmittel, letzter Stuhlgang, Katheter"></textarea></div>
+        <div class="feld breit"><label for="a-schlaf">Schlafen und Ruhen</label><textarea id="a-schlaf" data-b="anam.schlaf" placeholder="Gewohnheiten, Schlafmittel, Tag-Nacht-Rhythmus"></textarea></div>
+        <div class="feld breit"><label for="a-kognition">Kognition und Kommunikation</label><textarea id="a-kognition" data-b="anam.kognition" placeholder="Orientierung, Gedächtnis, Brille, Hörgerät, Sprache"></textarea></div>
+        <div class="feld breit"><label for="a-hilfsmittel">Hilfsmittel</label><input id="a-hilfsmittel" data-b="anam.hilfsmittel" placeholder="Rollator, Brille, Hörgerät links, Zahnprothese oben"></div>
+        <div class="feld breit"><label for="a-ressourcen">Ressourcen</label><textarea id="a-ressourcen" data-b="anam.ressourcen" placeholder="Was kann der Mensch selbst? Was motiviert ihn?"></textarea></div>
+        <div class="feld breit"><label for="a-wuensche">Wünsche und Gewohnheiten</label><textarea id="a-wuensche" data-b="anam.wuensche"></textarea></div>
+      </div>
+      <div class="felder" style="margin-top:.7rem">
+        <div class="feld"><label for="a-datum">Anamnese erhoben am</label><input type="date" id="a-datum" data-b="anam.datum"></div>
+        <div class="feld"><label for="a-hz">Handzeichen</label><input id="a-hz" data-b="anam.hz" style="font-family:var(--daten); text-transform:uppercase"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VITALWERTE ============ -->
+<section class="seite" id="seite-vital">
+  <h2>Vitalwerte, Kurve und Tagesverlauf</h2>
+
+  <div class="karte">
+    <h3>Kurve <span class="legende" style="padding:0">
+      <span><i style="background:var(--rr)"></i>Blutdruck</span>
+      <span><i style="background:var(--puls)"></i>Puls</span>
+      <span><i style="background:var(--temp)"></i>Temperatur</span>
+    </span></h3>
+    <div class="kurve-huelle" id="kurveHuelle">
+      <svg id="kurve" width="720" height="320" role="img" aria-label="Verlaufskurve der Vitalwerte"></svg>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Messwerte
+      <button type="button" class="klein haupt nicht-drucken" data-neu="vital">+ Messung</button>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabVital">
+        <thead><tr>
+          <th style="min-width:130px">Datum</th><th style="min-width:88px">Zeit</th>
+          <th>RR sys</th><th>RR dia</th><th>Puls</th><th>Temp °C</th>
+          <th>AF /min</th><th>SpO₂ %</th><th>O₂ l/min</th><th>BZ mg/dl</th>
+          <th>NRS Ruhe</th><th>NRS Bewegung</th><th>Gewicht kg</th><th>Hz</th><th class="nicht-drucken"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="karte-inhalt" style="padding-top:.5rem">
+      <p class="notiz">Messzeitpunkt und Handzeichen gehören zu jedem Wert. Schmerz wird getrennt in Ruhe und in Bewegung erfasst – die Differenz zeigt, ob eine Bedarfsmedikation vor der Mobilisation nötig ist. Auffälligkeiten zusätzlich im Pflegebericht beschreiben.</p>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Tagesverlauf
+      <button type="button" class="klein haupt nicht-drucken" data-neu="tage">+ Tag</button>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabTage">
+        <thead><tr>
+          <th style="min-width:130px">Datum</th>
+          <th style="min-width:96px">Tag nach OP</th>
+          <th style="min-width:150px">Kostform</th>
+          <th style="min-width:78px">Stuhl Anzahl</th>
+          <th style="min-width:120px">Beschaffenheit</th>
+          <th style="min-width:96px" class="schicht-start">Einfuhr ml</th>
+          <th style="min-width:110px">Urin / Katheter ml</th>
+          <th style="min-width:140px">weitere Ausfuhr</th>
+          <th style="min-width:88px">ml</th>
+          <th style="min-width:90px">Bilanz</th>
+          <th style="width:62px">Hz</th>
+          <th class="nicht-drucken"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="karte-inhalt" style="padding-top:.5rem">
+      <p class="notiz">Eine Zeile pro Tag. Bei liegendem Blasenkatheter die Urinmenge der Schichten addieren und als Tagesmenge eintragen; unter „weitere Ausfuhr“ stehen Drainage, Magensonde oder Erbrochenes. Die Bilanz erscheint, sobald eine Ausfuhrmenge dokumentiert ist – sie rechnet Einfuhr minus Ausfuhr. Ohne Katheter wird die Ausscheidung im Pflegebericht beschrieben.</p>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Zugänge, Ableitungen und Drainagen
+      <button type="button" class="klein haupt nicht-drucken" data-neu="zugaenge">+ Zugang</button>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabZugaenge">
+        <thead><tr>
+          <th style="min-width:190px">Art</th>
+          <th style="min-width:150px">Lokalisation / Seite</th>
+          <th style="min-width:130px">gelegt am</th>
+          <th style="min-width:96px">Liegedauer</th>
+          <th style="min-width:180px">Kontrolle / Zustand</th>
+          <th style="min-width:130px">entfernt am</th>
+          <th style="width:62px">Hz</th>
+          <th style="min-width:170px">Bemerkung</th>
+          <th class="nicht-drucken"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="karte-inhalt" style="padding-top:.5rem">
+      <p class="notiz">Die Liegedauer zählt das Programm mit – je länger ein Zugang liegt, desto genauer gehört die Einstichstelle beschrieben.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MEDIKATION ============ -->
+<section class="seite" id="seite-medikation">
+  <h2>Medikation</h2>
+
+  <div class="karte">
+    <h3>Dauermedikation
+      <button type="button" class="klein haupt nicht-drucken" data-neu="dauer">+ Medikament</button>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabDauer">
+        <thead><tr>
+          <th style="min-width:150px">Handelsname</th><th style="min-width:170px">Wirkstoff</th><th style="min-width:90px">Stärke</th>
+          <th style="min-width:110px">Form</th><th>morgens</th><th>mittags</th><th>abends</th><th>zur Nacht</th>
+          <th style="min-width:150px">Hinweis</th><th style="min-width:110px">angeordnet</th><th class="nicht-drucken"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Bedarfsmedikation
+      <button type="button" class="klein haupt nicht-drucken" data-neu="bedarf">+ Bedarfsmedikament</button>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabBedarf">
+        <thead><tr>
+          <th style="min-width:150px">Handelsname</th><th style="min-width:170px">Wirkstoff</th><th style="min-width:100px">Einzeldosis</th>
+          <th style="min-width:110px">Applikation</th><th style="min-width:160px">Indikation</th>
+          <th style="min-width:100px">max. / 24 h</th><th style="min-width:110px">Mindestabstand</th><th class="nicht-drucken"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Gabendokumentation
+      <button type="button" class="klein haupt nicht-drucken" data-neu="gaben">+ Gabe</button>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabGaben">
+        <thead><tr>
+          <th style="min-width:130px">Datum</th><th style="min-width:88px">Zeit</th>
+          <th style="min-width:150px">Handelsname</th><th style="min-width:170px">Wirkstoff</th><th style="min-width:100px">Dosis</th>
+          <th style="min-width:110px">Applikation</th><th>gegeben</th><th>Hz</th>
+          <th style="min-width:180px">Bemerkung / Wirkung</th><th class="nicht-drucken"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="karte-inhalt" style="padding-top:.5rem">
+      <p class="notiz">Handelsname und Wirkstoff gehören immer beide in die Dokumentation: Der Handelsname steht auf der Packung, der Wirkstoff sagt, was tatsächlich wirkt. Nur so fällt auf, wenn zwei Präparate denselben Wirkstoff enthalten oder eine Allergie den Wirkstoff betrifft. Nicht gegebene Medikamente werden ebenfalls dokumentiert – mit Grund in der Bemerkung.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ÄRZTLICHE ANORDNUNGEN ============ -->
+<section class="seite" id="seite-anordnungen">
+  <h2>Ärztliche Anordnungen</h2>
+
+  <div class="karte">
+    <h3>Anordnungen
+      <button type="button" class="klein haupt nicht-drucken" data-neu="anordnungen">+ Anordnung</button>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabAnordnungen">
+        <thead><tr>
+          <th style="min-width:130px">Datum</th>
+          <th style="min-width:88px">Zeit</th>
+          <th style="min-width:140px">Art</th>
+          <th style="min-width:280px">Anordnung</th>
+          <th style="min-width:140px">angeordnet von</th>
+          <th style="width:70px;text-align:center">mündlich</th>
+          <th style="width:70px">übernommen</th>
+          <th style="min-width:120px">Status</th>
+          <th style="min-width:130px">erledigt am</th>
+          <th style="width:62px">Hz</th>
+          <th style="min-width:180px">Bemerkung</th>
+          <th class="nicht-drucken"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="karte-inhalt" style="padding-top:.5rem">
+      <p class="notiz">Eine Anordnung wird ärztlich gegeben und pflegerisch übernommen – deshalb stehen hier zwei Handzeichen: eines für die Kenntnisnahme, eines für die Durchführung. Mündliche oder telefonische Anordnungen werden als solche gekennzeichnet und müssen vom Arzt nachträglich abgezeichnet werden. Unklare Anordnungen werden nicht ausgeführt, sondern nachgefragt.</p>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Diagnostik und Termine
+      <button type="button" class="klein haupt nicht-drucken" data-neu="diagnostik">+ Untersuchung</button>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabDiagnostik">
+        <thead><tr>
+          <th style="min-width:130px">Datum</th>
+          <th style="min-width:88px">Uhrzeit</th>
+          <th style="min-width:200px">Untersuchung</th>
+          <th style="min-width:150px">Ort / Abteilung</th>
+          <th style="min-width:200px">Vorbereitung</th>
+          <th style="width:70px;text-align:center">nüchtern</th>
+          <th style="min-width:140px">Transport</th>
+          <th style="min-width:150px">Status</th>
+          <th style="width:62px">Hz</th>
+          <th style="min-width:170px">Bemerkung</th>
+          <th class="nicht-drucken"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="karte-inhalt" style="padding-top:.5rem">
+      <p class="notiz">Vorbereitung heißt nicht nur nüchtern bleiben: Aufklärungsbogen, Zugang, abgelegter Schmuck, Begleitung und die Information des Patienten gehören dazu. Was vorbereitet wurde, wird hier mit Handzeichen festgehalten.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PFLEGEHANDLUNGEN ============ -->
+<section class="seite" id="seite-handlungen">
+  <h2>Pflegehandlungen – Durchführungsnachweis</h2>
+  <div class="karte">
+    <h3>Nachweis für</h3>
+    <div class="hkopf">
+      <div class="feld"><label for="h-datum">Datum</label><input type="date" id="h-datum" data-b="hkopf.datum"></div>
+      <div class="feld"><label for="h-hzF">Handzeichen Frühdienst</label><input id="h-hzF" data-b="hkopf.hzF" style="font-family:var(--daten);text-transform:uppercase"></div>
+      <div class="feld"><label for="h-hzS">Handzeichen Spätdienst</label><input id="h-hzS" data-b="hkopf.hzS" style="font-family:var(--daten);text-transform:uppercase"></div>
+      <div class="feld"><label for="h-hzN">Handzeichen Nachtdienst</label><input id="h-hzN" data-b="hkopf.hzN" style="font-family:var(--daten);text-transform:uppercase"></div>
+    </div>
+    <div class="karte-inhalt" style="padding-top:.4rem">
+      <p class="notiz">Jede Maßnahme lässt sich für Früh-, Spät- und Nachtdienst getrennt abhaken. Beim Anhaken werden Uhrzeit und Handzeichen der jeweiligen Schicht automatisch eingetragen, solange die Felder leer sind – beides ist überschreibbar und lässt sich auch nachträglich von Hand eintragen. Nur abhaken, was wirklich durchgeführt wurde.</p>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Durchgeführte Maßnahmen
+      <span style="display:flex;gap:.4rem">
+        <button type="button" class="klein nicht-drucken" id="btnHakenWeg">Haken zurücksetzen</button>
+        <button type="button" class="klein haupt nicht-drucken" data-neu="handlungen">+ eigene Maßnahme</button>
+      </span>
+    </h3>
+    <div class="tab-scroll">
+      <table id="tabHandlungen">
+        <thead>
+          <tr>
+            <th rowspan="2" style="min-width:250px">Pflegehandlung</th>
+            <th rowspan="2" style="min-width:110px">geplant</th>
+            <th colspan="3" class="schicht-start" style="text-align:center">Frühdienst</th>
+            <th colspan="3" class="schicht-start" style="text-align:center">Spätdienst</th>
+            <th colspan="3" class="schicht-start" style="text-align:center">Nachtdienst</th>
+            <th rowspan="2" class="schicht-start" style="min-width:190px">Bemerkung / Reaktion</th>
+            <th rowspan="2" class="nicht-drucken"></th>
+          </tr>
+          <tr>
+            <th class="schicht-start" style="width:52px;text-align:center">✓</th><th style="min-width:84px">Zeit</th><th style="width:58px">Hz</th>
+            <th class="schicht-start" style="width:52px;text-align:center">✓</th><th style="min-width:84px">Zeit</th><th style="width:58px">Hz</th>
+            <th class="schicht-start" style="width:52px;text-align:center">✓</th><th style="min-width:84px">Zeit</th><th style="width:58px">Hz</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ASSESSMENTS ============ -->
+<section class="seite" id="seite-assessment">
+  <h2>Assessments</h2>
+
+  <div class="karte">
+    <h3>Braden-Skala – Dekubitusrisiko</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld"><label for="b-1">Sensorisches Empfindungsvermögen</label>
+          <select id="b-1" data-b="braden.empfinden">
+            <option value="">–</option>
+            <option value="1">1 – fehlt</option><option value="2">2 – stark eingeschränkt</option>
+            <option value="3">3 – leicht eingeschränkt</option><option value="4">4 – vorhanden</option>
+          </select></div>
+        <div class="feld"><label for="b-2">Feuchtigkeit</label>
+          <select id="b-2" data-b="braden.feuchtigkeit">
+            <option value="">–</option>
+            <option value="1">1 – ständig feucht</option><option value="2">2 – oft feucht</option>
+            <option value="3">3 – manchmal feucht</option><option value="4">4 – selten feucht</option>
+          </select></div>
+        <div class="feld"><label for="b-3">Aktivität</label>
+          <select id="b-3" data-b="braden.aktivitaet">
+            <option value="">–</option>
+            <option value="1">1 – bettlägerig</option><option value="2">2 – sitzt auf</option>
+            <option value="3">3 – geht wenig</option><option value="4">4 – geht regelmäßig</option>
+          </select></div>
+        <div class="feld"><label for="b-4">Mobilität</label>
+          <select id="b-4" data-b="braden.mobilitaet">
+            <option value="">–</option>
+            <option value="1">1 – komplett immobil</option><option value="2">2 – stark eingeschränkt</option>
+            <option value="3">3 – gering eingeschränkt</option><option value="4">4 – mobil</option>
+          </select></div>
+        <div class="feld"><label for="b-5">Ernährung</label>
+          <select id="b-5" data-b="braden.ernaehrung">
+            <option value="">–</option>
+            <option value="1">1 – sehr schlechte Ernährung</option><option value="2">2 – wahrscheinlich unzureichend</option>
+            <option value="3">3 – ausreichend</option><option value="4">4 – sehr gut</option>
+          </select></div>
+        <div class="feld"><label for="b-6">Reibung und Scherkräfte</label>
+          <select id="b-6" data-b="braden.reibung">
+            <option value="">–</option>
+            <option value="1">1 – Problem</option><option value="2">2 – potenzielles Problem</option>
+            <option value="3">3 – kein Problem</option>
+          </select></div>
+      </div>
+      <div class="score"><span class="wert" id="bradenSumme">–</span><span class="deutung" id="bradenDeutung">Alle sechs Kategorien auswählen, um die Summe zu erhalten.</span></div>
+      <div class="felder" style="margin-top:.7rem">
+        <div class="feld"><label for="b-datum">Erhoben am</label><input type="date" id="b-datum" data-b="braden.datum"></div>
+        <div class="feld"><label for="b-hz">Handzeichen</label><input id="b-hz" data-b="braden.hz" style="font-family:var(--daten); text-transform:uppercase"></div>
+        <div class="feld breit"><label for="b-massnahmen">Abgeleitete Maßnahmen</label><textarea id="b-massnahmen" data-b="braden.massnahmen" placeholder="z.B. Bewegungsplan, Hautinspektion, Positionierung, Hilfsmittel"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>Sturzrisiko – Risikofaktoren</h3>
+    <div class="karte-inhalt">
+      <div class="felder" id="sturzListe"></div>
+      <div class="score"><span class="wert" id="sturzSumme">0</span><span class="deutung">von 10 Risikofaktoren angekreuzt. Die Zahl ersetzt keine Einschätzung – entscheidend ist, welche Faktoren zutreffen.</span></div>
+      <div class="felder" style="margin-top:.7rem">
+        <div class="feld"><label for="st-datum">Erhoben am</label><input type="date" id="st-datum" data-b="sturz.datum"></div>
+        <div class="feld"><label for="st-hz">Handzeichen</label><input id="st-hz" data-b="sturz.hz" style="font-family:var(--daten); text-transform:uppercase"></div>
+        <div class="feld breit"><label for="st-massnahmen">Abgeleitete Maßnahmen</label><textarea id="st-massnahmen" data-b="sturz.massnahmen" placeholder="z.B. Klingel in Reichweite, Nachtlicht, Begleitung zur Toilette, festes Schuhwerk"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="karte">
+    <h3>NRS-2002 – Ernährungsscreening</h3>
+    <div class="karte-inhalt">
+      <div class="felder">
+        <div class="feld"><label for="n-1">Ernährungszustand</label>
+          <select id="n-1" data-b="nrs.zustand">
+            <option value="">–</option>
+            <option value="0">0 – normal</option>
+            <option value="1">1 – Gewichtsverlust &gt;5 % in 3 Monaten oder Zufuhr 50–75 %</option>
+            <option value="2">2 – Gewichtsverlust &gt;5 % in 2 Monaten oder Zufuhr 25–50 %</option>
+            <option value="3">3 – Gewichtsverlust &gt;5 % in 1 Monat oder Zufuhr 0–25 %</option>
+          </select></div>
+        <div class="feld"><label for="n-2">Krankheitsschwere</label>
+          <select id="n-2" data-b="nrs.schwere">
+            <option value="">–</option>
+            <option value="0">0 – normaler Bedarf</option>
+            <option value="1">1 – z.B. chron. Erkrankung, Hüftfraktur</option>
+            <option value="2">2 – z.B. große Bauch-OP, Pneumonie</option>
+            <option value="3">3 – z.B. Intensivpflicht, Polytrauma</option>
+          </select></div>
+        <div class="feld"><label for="n-3">Alter ab 70 Jahren</label>
+          <select id="n-3" data-b="nrs.alter">
+            <option value="0">nein (0)</option><option value="1">ja (+1)</option>
+          </select></div>
+      </div>
+      <div class="score"><span class="wert" id="nrsSumme">–</span><span class="deutung" id="nrsDeutung">Ernährungszustand und Krankheitsschwere auswählen.</span></div>
+      <div class="felder" style="margin-top:.7rem">
+        <div class="feld"><label for="n-datum">Erhoben am</label><input type="date" id="n-datum" data-b="nrs.datum"></div>
+        <div class="feld"><label for="n-hz">Handzeichen</label><input id="n-hz" data-b="nrs.hz" style="font-family:var(--daten); text-transform:uppercase"></div>
+        <div class="feld breit"><label for="n-massnahmen">Abgeleitete Maßnahmen</label><textarea id="n-massnahmen" data-b="nrs.massnahmen" placeholder="z.B. Ernährungsprotokoll, Wunschkost, Rücksprache Ernährungsteam"></textarea></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WUNDEN ============ -->
+<section class="seite" id="seite-wunde">
+  <h2>Wunddokumentation</h2>
+  <div class="karte">
+    <h3>Wundverlauf
+      <button type="button" class="klein haupt nicht-drucken" data-neu="wunden">+ Wundeintrag</button>
+    </h3>
+    <div class="karte-inhalt" id="wundListe"></div>
+  </div>
+</section>
+
+<!-- ============ PFLEGEBERICHT ============ -->
+<section class="seite" id="seite-bericht">
+  <h2>Pflegebericht</h2>
+  <div class="karte">
+    <h3>Verlaufseinträge
+      <button type="button" class="klein haupt nicht-drucken" data-neu="bericht">+ Eintrag</button>
+    </h3>
+    <div class="karte-inhalt" id="berichtListe"></div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<div class="modal-hg nicht-drucken" id="modalHg" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitel">
+    <h4 id="modalTitel"></h4>
+    <div class="modal-inhalt" id="modalText"></div>
+    <div class="modal-fuss"><button type="button" class="haupt" id="modalZu">Verstanden</button></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ================= Katalog der Pflegehandlungen ================= */
+const HANDLUNGSKATALOG = [
+  ["Körperpflege und Kleidung", [
+    "Ganzkörperwaschung", "Teilwaschung", "Duschen oder Baden", "Intimpflege",
+    "Mund- und Zahnpflege", "Prothesenpflege", "Haarpflege", "Nagelpflege", "Rasur",
+    "Hautpflege und Hautinspektion", "An- und Auskleiden"
+  ]],
+  ["Mobilität und Positionierung", [
+    "Positionswechsel nach Bewegungsplan", "Transfer Bett – Stuhl", "Mobilisation an die Bettkante",
+    "Gehen mit Hilfsmittel begleitet", "Bewegungsübungen durchgeführt", "Sichere Umgebung geprüft"
+  ]],
+  ["Prophylaxen", [
+    "Dekubitusprophylaxe", "Pneumonieprophylaxe und Atemübungen", "Thromboseprophylaxe",
+    "Kontrakturprophylaxe", "Obstipationsprophylaxe", "Soor- und Parotitisprophylaxe",
+    "Aspirationsprophylaxe", "Intertrigoprophylaxe", "Sturzprophylaxe"
+  ]],
+  ["Ernährung und Ausscheidung", [
+    "Essen gereicht oder begleitet", "Trinken angeboten", "Trink- oder Ernährungsprotokoll geführt",
+    "Ein- und Ausfuhr bilanziert", "Toilettengang begleitet", "Inkontinenzmaterial gewechselt",
+    "Katheterpflege", "Stomaversorgung", "Stuhlgang beobachtet und dokumentiert"
+  ]],
+  ["Behandlungspflege", [
+    "Vitalzeichenkontrolle", "Blutzuckerkontrolle", "Medikamente gerichtet",
+    "Medikamente verabreicht", "Injektion subkutan", "Infusion überwacht",
+    "Verbandwechsel", "Zugang oder Kanüle kontrolliert", "Sauerstoffgabe kontrolliert", "Absaugen"
+  ]],
+  ["Kommunikation und Betreuung", [
+    "Aufnahme- oder Anamnesegespräch", "Beratung und Anleitung", "Angehörigengespräch",
+    "Arzt informiert", "Übergabe durchgeführt", "Begleitung zur Diagnostik", "Zuwendung und Gespräch"
+  ]],
+  ["Umgebung und Organisation", [
+    "Bett gemacht oder Bettwäsche gewechselt", "Zimmer aufgeräumt, Klingel in Reichweite",
+    "Hilfsmittel bereitgestellt", "Material nachgefüllt"
+  ]]
+];
+const EIGENE_GRUPPE = "Weitere Pflegehandlungen";
+function katalogNeu(){
+  const liste = [];
+  HANDLUNGSKATALOG.forEach(([kat, namen]) => namen.forEach(name =>
+    liste.push({kat, name, geplant:"",
+      fDone:false, fZeit:"", fHz:"", sDone:false, sZeit:"", sHz:"", nDone:false, nZeit:"", nHz:"", bem:""})));
+  return liste;
+}
+
+/* ================= Zustand ================= */
+const leerZustand = () => ({
+  meta:{hz:"", logo:""}, stamm:{}, anam:{}, braden:{}, sturz:{}, nrs:{}, hkopf:{},
+  vital:[], tage:[], zugaenge:[], dauer:[], bedarf:[], gaben:[], anordnungen:[], diagnostik:[],
+  wunden:[], bericht:[], handlungen:katalogNeu()
+});
+let AKTIV = -1;        // Index des geöffneten Bettplatzes
+let Z = leerZustand(); // Kurzzugriff auf den geöffneten Patienten
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const esc = v => String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const zahl = v => { const n = parseFloat(String(v ?? "").replace(",",".")); return isFinite(n) ? n : null; };
+const heute = () => new Date().toISOString().slice(0,10);
+const jetzt = () => new Date().toTimeString().slice(0,5);
+const tagVersetzt = d => { const t = new Date(); t.setDate(t.getDate()+d); return t.toISOString().slice(0,10); };
+const dmy = iso => iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso.slice(8,10)+"."+iso.slice(5,7)+"." : (iso || "");
+
+/* ================= Sturz-Risikofaktoren ================= */
+const STURZFAKTOREN = [
+  ["f1","Sturz in den letzten 12 Monaten"],
+  ["f2","Gang- oder Balanceunsicherheit"],
+  ["f3","Schwindel oder Kreislaufprobleme"],
+  ["f4","Sehbeeinträchtigung"],
+  ["f5","Kognitive Einschränkung oder Verwirrtheit"],
+  ["f6","Dranginkontinenz oder häufige Toilettengänge"],
+  ["f7","Sturzbegünstigende Medikamente"],
+  ["f8","Braucht Gehhilfe oder personelle Unterstützung"],
+  ["f9","Ungeeignetes Schuhwerk oder Kleidung"],
+  ["f10","Fremde Umgebung oder Hindernisse im Zimmer"]
+];
+$("#sturzListe").innerHTML = STURZFAKTOREN.map(([k,t]) =>
+  `<div class="pruef"><input type="checkbox" id="st-${k}" data-b="sturz.${k}"><label for="st-${k}">${t}</label></div>`
+).join("");
+
+/* ================= Bindung einfacher Felder ================= */
+function feldGeschrieben(el){
+  const [o,k] = el.dataset.b.split(".");
+  Z[o][k] = el.type === "checkbox" ? el.checked : el.value;
+  if (o === "stamm") { bandZeichnen(); rechnenStamm(); stationZeichnen(); }
+  if (o === "braden" || o === "sturz" || o === "nrs") scoresZeichnen();
+}
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset && el.dataset.b) feldGeschrieben(el);
+  else if (el.dataset && el.dataset.arr) {
+    Z[el.dataset.arr][+el.dataset.i][el.dataset.k] = el.type === "checkbox" ? el.checked : el.value;
+    if (el.dataset.arr === "vital") kurveZeichnen();
+    if (el.dataset.arr === "wunden" || el.dataset.arr === "bericht") kopfzeileAktualisieren(el);
+    if (el.dataset.arr === "tage") zelleErneuern("bilanz", el.dataset.i, bilanzText);
+    if (el.dataset.arr === "zugaenge") zelleErneuern("liege", el.dataset.i, liegeText);
+    if (el.dataset.arr === "handlungen" && /Done$/.test(el.dataset.k)) hakenErgaenzen(el);
+  }
+});
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.dataset && el.dataset.b) feldGeschrieben(el);
+  else if (el.dataset && el.dataset.arr) {
+    Z[el.dataset.arr][+el.dataset.i][el.dataset.k] = el.type === "checkbox" ? el.checked : el.value;
+    if (el.dataset.arr === "vital") kurveZeichnen();
+    if (el.dataset.arr === "handlungen" && /Done$/.test(el.dataset.k)) hakenErgaenzen(el);
+    if (el.dataset.arr === "tage") zelleErneuern("bilanz", el.dataset.i, bilanzText);
+    if (el.dataset.arr === "zugaenge") zelleErneuern("liege", el.dataset.i, liegeText);
+  }
+});
+
+/* Berechnete Zelle einer Zeile neu setzen, ohne die Tabelle neu zu zeichnen */
+function zelleErneuern(name, i, textFn){
+  const zelle = document.querySelector(`[data-${name}="${i}"]`);
+  if (zelle) zelle.textContent = textFn(+i);
+}
+
+/* Beim Anhaken Uhrzeit und Handzeichen ergänzen, sofern noch leer */
+function hakenErgaenzen(el){
+  if (!el.checked) return;
+  const i = +el.dataset.i, zeile = el.closest("tr");
+  if (!zeile) return;
+  const pre = el.dataset.k.charAt(0);
+  const zeitEl = zeile.querySelector(`[data-k="${pre}Zeit"]`);
+  const hzEl = zeile.querySelector(`[data-k="${pre}Hz"]`);
+  if (zeitEl && !zeitEl.value){ zeitEl.value = jetzt(); Z.handlungen[i][pre+"Zeit"] = zeitEl.value; }
+  const hz = Z.hkopf["hz" + pre.toUpperCase()] || Z.meta.hz;
+  if (hzEl && !hzEl.value && hz){ hzEl.value = hz; Z.handlungen[i][pre+"Hz"] = hz; }
+}
+
+function formulareFuellen(){
+  $$("[data-b]").forEach(el => {
+    const [o,k] = el.dataset.b.split(".");
+    const v = Z[o][k];
+    if (el.type === "checkbox") el.checked = !!v; else el.value = v ?? "";
+  });
+}
+
+/* ================= Patientenband ================= */
+function alterAus(geb){
+  if (!geb) return null;
+  const g = new Date(geb); if (isNaN(g)) return null;
+  const h = new Date(); let a = h.getFullYear() - g.getFullYear();
+  const m = h.getMonth() - g.getMonth();
+  if (m < 0 || (m === 0 && h.getDate() < g.getDate())) a--;
+  return a >= 0 && a < 130 ? a : null;
+}
+function rechnenStamm(){
+  const a = alterAus(Z.stamm.geb);
+  $("#s-alter").value = a === null ? "" : a + " Jahre";
+  const g = zahl(Z.stamm.groesse), kg = zahl(Z.stamm.gewicht);
+  $("#s-bmi").value = (g && kg && g > 50) ? (kg / Math.pow(g/100,2)).toFixed(1) + " kg/m²" : "";
+}
+function bandZeichnen(){
+  const s = Z.stamm;
+  const name = [s.nachname, s.vorname].filter(Boolean).join(", ");
+  $("#bandName").innerHTML = name ? esc(name) : '<span class="leer">Kein Patient erfasst</span>';
+  const a = alterAus(s.geb);
+  $("#bandGeb").textContent = s.geb ? dmy(s.geb) + (s.geb.slice(0,4)) : "–";
+  $("#bandAlter").textContent = a === null ? "–" : a + " J.";
+  $("#bandFall").textContent = s.fall || "–";
+  $("#bandStation").textContent = s.station || "–";
+  $("#bandZimmer").textContent = s.zimmer || "–";
+  $("#bandAufnahme").textContent = s.aufnDatum ? dmy(s.aufnDatum) + s.aufnDatum.slice(0,4) + (s.aufnZeit ? " " + s.aufnZeit : "") : "–";
+  $("#bandDiagnose").textContent = s.diagnose || "–";
+  let chips = "";
+  if (s.allergien) chips += `<span class="chip warn">Allergie: ${esc(s.allergien)}</span>`;
+  if (s.isolation) chips += `<span class="chip iso">${esc(s.isolation)}${s.keim ? " – " + esc(s.keim) : ""}</span>`;
+  if (s.auskunftssperre) chips += `<span class="chip warn">Auskunftssperre</span>`;
+  if (s.geschlecht) chips += `<span class="chip">${esc(s.geschlecht)}</span>`;
+  $("#bandChips").innerHTML = chips;
+}
+
+/* ================= Tabellenzeilen ================= */
+function inp(arr,i,k,typ,extra){
+  const v = Z[arr][i][k] ?? "";
+  extra = extra || "";
+  if (typ === "check") return `<input type="checkbox" data-arr="${arr}" data-i="${i}" data-k="${k}" ${v ? "checked" : ""}>`;
+  return `<input type="${typ}" data-arr="${arr}" data-i="${i}" data-k="${k}" value="${esc(v)}" ${extra}>`;
+}
+const delBtn = (arr,i) => `<button type="button" class="klein loeschen nicht-drucken" data-del="${arr}" data-i="${i}" aria-label="Zeile löschen">✕</button>`;
+const nummer = 'style="width:74px" inputmode="decimal"';
+const nummerK = 'style="width:66px" inputmode="numeric"';
+
+function tabelleZeichnen(arr, tbodySel, zeileFn, spaltenZahl, leerText){
+  const tb = $(tbodySel);
+  if (!Z[arr].length){ tb.innerHTML = `<tr><td colspan="${spaltenZahl}" class="leerzeile">${leerText}</td></tr>`; return; }
+  tb.innerHTML = Z[arr].map((_,i) => "<tr>" + zeileFn(i) + "</tr>").join("");
+}
+
+function vitalZeichnen(){
+  tabelleZeichnen("vital","#tabVital tbody", i => `
+    <td>${inp("vital",i,"datum","date")}</td>
+    <td>${inp("vital",i,"zeit","time")}</td>
+    <td>${inp("vital",i,"rrSys","number",nummerK)}</td>
+    <td>${inp("vital",i,"rrDia","number",nummerK)}</td>
+    <td>${inp("vital",i,"puls","number",nummerK)}</td>
+    <td>${inp("vital",i,"temp","number",nummer+' step="0.1"')}</td>
+    <td>${inp("vital",i,"af","number",nummerK)}</td>
+    <td>${inp("vital",i,"spo2","number",nummerK)}</td>
+    <td>${inp("vital",i,"o2","text",'style="width:70px"')}</td>
+    <td>${inp("vital",i,"bz","number",nummerK)}</td>
+    <td>${inp("vital",i,"schmerzRuhe","number",nummerK+' min="0" max="10"')}</td>
+    <td>${inp("vital",i,"schmerzBewegung","number",nummerK+' min="0" max="10"')}</td>
+    <td>${inp("vital",i,"gewicht","number",nummer+' step="0.1"')}</td>
+    <td>${inp("vital",i,"hz","text",'style="width:62px;text-transform:uppercase"')}</td>
+    <td class="nicht-drucken">${delBtn("vital",i)}</td>`, 15,
+    "Noch keine Messwerte. Über „+ Messung“ eine Zeile anlegen.");
+  kurveZeichnen();
+}
+
+const KOSTFORMEN = ["","nüchtern","Vollkost","leichte Vollkost","Diabeteskost","passierte Kost","pürierte Kost","Flüssigkost","Aufbaukost","Sondenkost","parenterale Ernährung","Wunschkost"];
+const STUHLARTEN = ["","geformt","weich","breiig","flüssig","hart","blutig","schwarz"];
+const ZUGANGSARTEN = ["","Peripherer Venenkatheter (PVK)","Zentraler Venenkatheter (ZVK)","Portkatheter","Arterieller Zugang","Blasenkatheter transurethral","Suprapubischer Katheter","Magensonde","PEG-Sonde","Drainage","Trachealkanüle","Sonstiges"];
+
+function auswahl(arr,i,k,optionen){
+  const v = Z[arr][i][k] || "";
+  return `<select data-arr="${arr}" data-i="${i}" data-k="${k}">` +
+    optionen.map(o => `<option ${v===o?"selected":""}>${esc(o)}</option>`).join("") + `</select>`;
+}
+
+function bilanzText(i){
+  const t = Z.tage[i];
+  const ein = zahl(t.einfuhr);
+  const urin = zahl(t.urin), weiter = zahl(t.ausfuhrMl);
+  if (urin === null && weiter === null) return "–";
+  const aus = (urin || 0) + (weiter || 0);
+  const b = Math.round((ein || 0) - aus);
+  return (b > 0 ? "+" : b < 0 ? "−" : "") + Math.abs(b) + " ml";
+}
+function liegeText(i){
+  const z = Z.zugaenge[i];
+  if (!z.gelegt) return "–";
+  const start = new Date(z.gelegt);
+  const ende = z.entfernt ? new Date(z.entfernt) : new Date();
+  if (isNaN(start) || isNaN(ende)) return "–";
+  const tage = Math.floor((ende - start) / 86400000) + 1;
+  if (tage < 1) return "–";
+  return z.entfernt ? tage + (tage === 1 ? " Tag" : " Tage") + " (entfernt)" : tage + ". Tag";
+}
+
+function tageZeichnen(){
+  tabelleZeichnen("tage","#tabTage tbody", i => `
+    <td>${inp("tage",i,"datum","date")}</td>
+    <td>${inp("tage",i,"postOp","number",'style="width:80px" inputmode="numeric"')}</td>
+    <td>${auswahl("tage",i,"kost",KOSTFORMEN)}</td>
+    <td>${inp("tage",i,"stuhlAnzahl","number",'style="width:70px" inputmode="numeric"')}</td>
+    <td>${auswahl("tage",i,"stuhlArt",STUHLARTEN)}</td>
+    <td class="schicht-start">${inp("tage",i,"einfuhr","number",'style="width:88px" inputmode="numeric"')}</td>
+    <td>${inp("tage",i,"urin","number",'style="width:98px" inputmode="numeric"')}</td>
+    <td>${inp("tage",i,"ausfuhrArt","text",'placeholder="z.B. Drainage"')}</td>
+    <td>${inp("tage",i,"ausfuhrMl","number",'style="width:80px" inputmode="numeric"')}</td>
+    <td class="zahl" data-bilanz="${i}" style="font-family:var(--daten);padding-right:.4rem">${bilanzText(i)}</td>
+    <td>${inp("tage",i,"hz","text",'style="width:56px;text-transform:uppercase"')}</td>
+    <td class="nicht-drucken">${delBtn("tage",i)}</td>`, 12,
+    "Noch kein Tag angelegt. Über „+ Tag“ eine Zeile für heute erzeugen.");
+}
+
+function zugaengeZeichnen(){
+  tabelleZeichnen("zugaenge","#tabZugaenge tbody", i => `
+    <td>${auswahl("zugaenge",i,"art",ZUGANGSARTEN)}</td>
+    <td>${inp("zugaenge",i,"ort","text",'placeholder="z.B. Unterarm rechts"')}</td>
+    <td>${inp("zugaenge",i,"gelegt","date")}</td>
+    <td class="zahl" data-liege="${i}" style="font-family:var(--daten);padding-right:.4rem">${liegeText(i)}</td>
+    <td>${inp("zugaenge",i,"kontrolle","text",'placeholder="reizlos, gerötet, druckschmerzhaft"')}</td>
+    <td>${inp("zugaenge",i,"entfernt","date")}</td>
+    <td>${inp("zugaenge",i,"hz","text",'style="width:56px;text-transform:uppercase"')}</td>
+    <td>${inp("zugaenge",i,"bemerkung","text")}</td>
+    <td class="nicht-drucken">${delBtn("zugaenge",i)}</td>`, 9,
+    "Noch kein Zugang oder keine Ableitung erfasst.");
+}
+
+const ANORDNUNGSARTEN = ["","Medikament","Infusion","Diagnostik","Überwachung","Mobilisation","Kostform","Pflegemaßnahme","Sonstiges"];
+const ANORDNUNGSSTATUS = ["offen","läuft","erledigt","abgesetzt"];
+const TRANSPORTARTEN = ["","selbstständig","Rollstuhl","Bett","Liegendtransport"];
+const DIAGNOSTIKSTATUS = ["angemeldet","Termin steht","durchgeführt","Befund liegt vor","abgesagt"];
+
+function anordnungenZeichnen(){
+  tabelleZeichnen("anordnungen","#tabAnordnungen tbody", i => `
+    <td>${inp("anordnungen",i,"datum","date")}</td>
+    <td>${inp("anordnungen",i,"zeit","time")}</td>
+    <td>${auswahl("anordnungen",i,"art",ANORDNUNGSARTEN)}</td>
+    <td>${inp("anordnungen",i,"text","text",'placeholder="was genau, wie viel, wie oft, wie lange"')}</td>
+    <td>${inp("anordnungen",i,"arzt","text",'placeholder="Name der Ärztin / des Arztes"')}</td>
+    <td style="text-align:center">${inp("anordnungen",i,"muendlich","check")}</td>
+    <td>${inp("anordnungen",i,"uebernommen","text",'style="width:62px;text-transform:uppercase"')}</td>
+    <td>${auswahl("anordnungen",i,"status",ANORDNUNGSSTATUS)}</td>
+    <td>${inp("anordnungen",i,"erledigt","date")}</td>
+    <td>${inp("anordnungen",i,"hz","text",'style="width:56px;text-transform:uppercase"')}</td>
+    <td>${inp("anordnungen",i,"bemerkung","text")}</td>
+    <td class="nicht-drucken">${delBtn("anordnungen",i)}</td>`, 12,
+    "Noch keine Anordnung erfasst. Über „+ Anordnung“ eine Zeile anlegen.");
+}
+
+function diagnostikZeichnen(){
+  tabelleZeichnen("diagnostik","#tabDiagnostik tbody", i => `
+    <td>${inp("diagnostik",i,"datum","date")}</td>
+    <td>${inp("diagnostik",i,"zeit","time")}</td>
+    <td>${inp("diagnostik",i,"name","text",'placeholder="z.B. Röntgen Thorax"')}</td>
+    <td>${inp("diagnostik",i,"ort","text",'placeholder="Radiologie, Ebene 1"')}</td>
+    <td>${inp("diagnostik",i,"vorbereitung","text",'placeholder="Aufklärung, Zugang, Schmuck ab"')}</td>
+    <td style="text-align:center">${inp("diagnostik",i,"nuechtern","check")}</td>
+    <td>${auswahl("diagnostik",i,"transport",TRANSPORTARTEN)}</td>
+    <td>${auswahl("diagnostik",i,"status",DIAGNOSTIKSTATUS)}</td>
+    <td>${inp("diagnostik",i,"hz","text",'style="width:56px;text-transform:uppercase"')}</td>
+    <td>${inp("diagnostik",i,"bemerkung","text")}</td>
+    <td class="nicht-drucken">${delBtn("diagnostik",i)}</td>`, 11,
+    "Noch keine Untersuchung angemeldet.");
+}
+
+function dauerZeichnen(){
+  tabelleZeichnen("dauer","#tabDauer tbody", i => `
+    <td>${inp("dauer",i,"name","text",'placeholder="Handelsname"')}</td>
+    <td>${inp("dauer",i,"wirkstoff","text",'placeholder="Wirkstoff"')}</td>
+    <td>${inp("dauer",i,"staerke","text",'style="width:88px"')}</td>
+    <td>${inp("dauer",i,"form","text")}</td>
+    <td>${inp("dauer",i,"morgens","text",'style="width:62px" class="zahl"')}</td>
+    <td>${inp("dauer",i,"mittags","text",'style="width:62px" class="zahl"')}</td>
+    <td>${inp("dauer",i,"abends","text",'style="width:62px" class="zahl"')}</td>
+    <td>${inp("dauer",i,"nachts","text",'style="width:62px" class="zahl"')}</td>
+    <td>${inp("dauer",i,"hinweis","text")}</td>
+    <td>${inp("dauer",i,"angeordnet","text")}</td>
+    <td class="nicht-drucken">${delBtn("dauer",i)}</td>`, 11,
+    "Noch keine Dauermedikation erfasst.");
+}
+function bedarfZeichnen(){
+  tabelleZeichnen("bedarf","#tabBedarf tbody", i => `
+    <td>${inp("bedarf",i,"name","text",'placeholder="Handelsname"')}</td>
+    <td>${inp("bedarf",i,"wirkstoff","text",'placeholder="Wirkstoff"')}</td>
+    <td>${inp("bedarf",i,"dosis","text")}</td>
+    <td>${inp("bedarf",i,"applikation","text")}</td>
+    <td>${inp("bedarf",i,"indikation","text")}</td>
+    <td>${inp("bedarf",i,"maxTag","text")}</td>
+    <td>${inp("bedarf",i,"abstand","text")}</td>
+    <td class="nicht-drucken">${delBtn("bedarf",i)}</td>`, 8,
+    "Noch keine Bedarfsmedikation erfasst.");
+}
+function gabenZeichnen(){
+  tabelleZeichnen("gaben","#tabGaben tbody", i => `
+    <td>${inp("gaben",i,"datum","date")}</td>
+    <td>${inp("gaben",i,"zeit","time")}</td>
+    <td>${inp("gaben",i,"name","text",'placeholder="Handelsname"')}</td>
+    <td>${inp("gaben",i,"wirkstoff","text",'placeholder="Wirkstoff"')}</td>
+    <td>${inp("gaben",i,"dosis","text")}</td>
+    <td>${inp("gaben",i,"applikation","text")}</td>
+    <td style="text-align:center">${inp("gaben",i,"gegeben","check")}</td>
+    <td>${inp("gaben",i,"hz","text",'style="width:62px;text-transform:uppercase"')}</td>
+    <td>${inp("gaben",i,"bemerkung","text")}</td>
+    <td class="nicht-drucken">${delBtn("gaben",i)}</td>`, 10,
+    "Noch keine Gaben dokumentiert.");
+}
+
+/* ================= Wunden ================= */
+function wundenZeichnen(){
+  const ziel = $("#wundListe");
+  if (!Z.wunden.length){ ziel.innerHTML = `<p class="leerzeile">Noch kein Wundeintrag. Über „+ Wundeintrag“ starten.</p>`; return; }
+  ziel.innerHTML = Z.wunden.map((w,i) => `
+    <div class="eintrag">
+      <div class="eintrag-kopf">
+        <span data-kopf="wunden-${i}">${esc(dmy(w.datum) + (w.datum ? w.datum.slice(0,4) : ""))} ${esc(w.zeit || "")} · ${esc(w.lokalisation || "ohne Lokalisation")}</span>
+        ${delBtn("wunden",i)}
+      </div>
+      <div class="eintrag-inhalt">
+        <div class="felder">
+          <div class="feld"><label>Datum</label>${inp("wunden",i,"datum","date")}</div>
+          <div class="feld"><label>Zeit</label>${inp("wunden",i,"zeit","time")}</div>
+          <div class="feld"><label>Lokalisation</label>${inp("wunden",i,"lokalisation","text",'placeholder="z.B. Sakralbereich"')}</div>
+          <div class="feld"><label>Wundart</label>
+            <select data-arr="wunden" data-i="${i}" data-k="art">
+              ${["","Dekubitus","Ulcus cruris","Diabetisches Fußsyndrom","OP-Wunde","Riss- oder Platzwunde","Sonstige"].map(o=>`<option ${w.art===o?"selected":""}>${o}</option>`).join("")}
+            </select></div>
+          <div class="feld"><label>Kategorie / Grad</label>
+            <select data-arr="wunden" data-i="${i}" data-k="kategorie">
+              ${["","Kategorie 1","Kategorie 2","Kategorie 3","Kategorie 4","nicht klassifizierbar","primär heilend"].map(o=>`<option ${w.kategorie===o?"selected":""}>${o}</option>`).join("")}
+            </select></div>
+          <div class="feld"><label>Länge × Breite × Tiefe (cm)</label>
+            <div style="display:flex;gap:.3rem">
+              ${inp("wunden",i,"laenge","number",'step="0.1" inputmode="decimal" placeholder="L"')}
+              ${inp("wunden",i,"breite","number",'step="0.1" inputmode="decimal" placeholder="B"')}
+              ${inp("wunden",i,"tiefe","number",'step="0.1" inputmode="decimal" placeholder="T"')}
+            </div></div>
+          <div class="feld breit"><label>Wundgrund</label>${inp("wunden",i,"wundgrund","text",'placeholder="z.B. 60 % Granulation, 40 % Fibrin"')}</div>
+          <div class="feld"><label>Exsudat – Menge</label>
+            <select data-arr="wunden" data-i="${i}" data-k="exsudatMenge">
+              ${["","kein","gering","mäßig","stark"].map(o=>`<option ${w.exsudatMenge===o?"selected":""}>${o}</option>`).join("")}
+            </select></div>
+          <div class="feld"><label>Exsudat – Art</label>${inp("wunden",i,"exsudatArt","text",'placeholder="serös, blutig, eitrig"')}</div>
+          <div class="feld"><label>Geruch</label>
+            <select data-arr="wunden" data-i="${i}" data-k="geruch">
+              ${["","geruchlos","leicht","stark"].map(o=>`<option ${w.geruch===o?"selected":""}>${o}</option>`).join("")}
+            </select></div>
+          <div class="feld"><label>Wundrand</label>${inp("wunden",i,"wundrand","text",'placeholder="reizlos, mazeriert, unterminiert"')}</div>
+          <div class="feld"><label>Wundumgebung</label>${inp("wunden",i,"umgebung","text",'placeholder="Rötung, Schwellung, trockene Haut"')}</div>
+          <div class="feld"><label>Wundschmerz beim Wechsel (NRS)</label>${inp("wunden",i,"schmerz","number",'min="0" max="10" inputmode="numeric"')}</div>
+          <div class="feld"><label>Wundreinigung</label>${inp("wunden",i,"reinigung","text",'placeholder="z.B. NaCl 0,9 %"')}</div>
+          <div class="feld"><label>Wundauflage / Verband</label>${inp("wunden",i,"auflage","text")}</div>
+          <div class="feld"><label>Nächster Verbandwechsel</label>${inp("wunden",i,"naechsterVw","date")}</div>
+          <div class="feld"><label>Handzeichen</label>${inp("wunden",i,"hz","text",'style="text-transform:uppercase"')}</div>
+          <div class="feld breit"><label>Beobachtung / Verlauf</label>
+            <textarea data-arr="wunden" data-i="${i}" data-k="bemerkung" placeholder="Was hat sich seit dem letzten Verbandwechsel verändert?">${esc(w.bemerkung || "")}</textarea></div>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+/* ================= Pflegehandlungen ================= */
+function handlungenZeichnen(){
+  const tb = $("#tabHandlungen tbody");
+  const gruppen = HANDLUNGSKATALOG.map(([kat]) => kat).concat([EIGENE_GRUPPE]);
+  let out = "";
+  gruppen.forEach(kat => {
+    const zeilen = Z.handlungen
+      .map((h,i) => ({h,i}))
+      .filter(({h}) => (h.kat || EIGENE_GRUPPE) === kat);
+    if (!zeilen.length) return;
+    out += `<tr><td class="gruppe-titel" colspan="13">${esc(kat)}</td></tr>`;
+    zeilen.forEach(({h,i}) => {
+      const name = h.eigen
+        ? inp("handlungen",i,"name","text",'placeholder="eigene Pflegehandlung"')
+        : `<span style="padding-left:.3rem">${esc(h.name)}</span>`;
+      const block = pre => `
+        <td class="schicht-start" style="text-align:center">${inp("handlungen",i,pre+"Done","check")}</td>
+        <td>${inp("handlungen",i,pre+"Zeit","time")}</td>
+        <td>${inp("handlungen",i,pre+"Hz","text",'style="width:56px;text-transform:uppercase"')}</td>`;
+      out += `<tr>
+        <td>${name}</td>
+        <td>${inp("handlungen",i,"geplant","text",'placeholder="z.B. 3x täglich"')}</td>
+        ${block("f")}${block("s")}${block("n")}
+        <td class="schicht-start">${inp("handlungen",i,"bem","text")}</td>
+        <td class="nicht-drucken">${h.eigen ? delBtn("handlungen",i) : ""}</td>
+      </tr>`;
+    });
+  });
+  tb.innerHTML = out;
+}
+
+/* ================= Pflegebericht ================= */
+function berichtZeichnen(){
+  const ziel = $("#berichtListe");
+  if (!Z.bericht.length){ ziel.innerHTML = `<p class="leerzeile">Noch kein Eintrag. Über „+ Eintrag“ den ersten Verlaufseintrag schreiben.</p>`; return; }
+  ziel.innerHTML = Z.bericht.map((b,i) => `
+    <div class="eintrag">
+      <div class="eintrag-kopf">
+        <span data-kopf="bericht-${i}">${esc(dmy(b.datum) + (b.datum ? b.datum.slice(0,4) : ""))} ${esc(b.zeit || "")} · ${esc(b.schicht || "")} · ${esc((b.hz || "").toUpperCase())}</span>
+        ${delBtn("bericht",i)}
+      </div>
+      <div class="eintrag-inhalt">
+        <div class="felder" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="feld"><label>Datum</label>${inp("bericht",i,"datum","date")}</div>
+          <div class="feld"><label>Zeit</label>${inp("bericht",i,"zeit","time")}</div>
+          <div class="feld"><label>Schicht</label>
+            <select data-arr="bericht" data-i="${i}" data-k="schicht">
+              ${["","Frühdienst","Spätdienst","Nachtdienst"].map(o=>`<option ${b.schicht===o?"selected":""}>${o}</option>`).join("")}
+            </select></div>
+          <div class="feld"><label>Handzeichen</label>${inp("bericht",i,"hz","text",'style="text-transform:uppercase"')}</div>
+        </div>
+        <div class="feld" style="margin-top:.6rem"><label>Eintrag</label>
+          <textarea data-arr="bericht" data-i="${i}" data-k="text" style="min-height:120px" placeholder="Beobachtung, durchgeführte Maßnahme, Reaktion des Patienten, Information an Arzt oder Angehörige">${esc(b.text || "")}</textarea></div>
+      </div>
+    </div>`).join("");
+}
+
+function kopfzeileAktualisieren(el){
+  if (el.dataset.arr === "wunden") wundenKopf(+el.dataset.i);
+  if (el.dataset.arr === "bericht") berichtKopf(+el.dataset.i);
+}
+function wundenKopf(i){
+  const w = Z.wunden[i], k = document.querySelector(`[data-kopf="wunden-${i}"]`);
+  if (k) k.textContent = `${dmy(w.datum) + (w.datum ? w.datum.slice(0,4) : "")} ${w.zeit || ""} · ${w.lokalisation || "ohne Lokalisation"}`;
+}
+function berichtKopf(i){
+  const b = Z.bericht[i], k = document.querySelector(`[data-kopf="bericht-${i}"]`);
+  if (k) k.textContent = `${dmy(b.datum) + (b.datum ? b.datum.slice(0,4) : "")} ${b.zeit || ""} · ${b.schicht || ""} · ${(b.hz || "").toUpperCase()}`;
+}
+</script>
+
+<script>
+"use strict";
+
+/* ================= Scores ================= */
+const BRADEN_KEYS = ["empfinden","feuchtigkeit","aktivitaet","mobilitaet","ernaehrung","reibung"];
+function bradenSumme(p){
+  const bw = BRADEN_KEYS.map(k => zahl(p.braden[k]));
+  return bw.some(v => v === null) ? null : bw.reduce((a,b) => a+b, 0);
+}
+function scoresZeichnen(){
+  const bw = BRADEN_KEYS.map(k => zahl(Z.braden[k]));
+  if (bw.some(v => v === null)){
+    $("#bradenSumme").textContent = "–";
+    $("#bradenDeutung").textContent = "Alle sechs Kategorien auswählen, um die Summe zu erhalten.";
+  } else {
+    const s = bw.reduce((a,b) => a+b, 0);
+    let d;
+    if (s <= 9) d = "sehr hohes Dekubitusrisiko";
+    else if (s <= 12) d = "hohes Dekubitusrisiko";
+    else if (s <= 14) d = "mittleres Dekubitusrisiko";
+    else if (s <= 18) d = "geringes Dekubitusrisiko";
+    else d = "kein erhöhtes Risiko nach Braden";
+    $("#bradenSumme").textContent = s;
+    $("#bradenDeutung").textContent = d + " (Skala 6–23 Punkte, Risiko ab 18 abwärts).";
+  }
+
+  $("#sturzSumme").textContent = STURZFAKTOREN.filter(([k]) => Z.sturz[k]).length;
+
+  const nz = zahl(Z.nrs.zustand), ns = zahl(Z.nrs.schwere), na = zahl(Z.nrs.alter) || 0;
+  if (nz === null || ns === null){
+    $("#nrsSumme").textContent = "–";
+    $("#nrsDeutung").textContent = "Ernährungszustand und Krankheitsschwere auswählen.";
+  } else {
+    const s = nz + ns + na;
+    $("#nrsSumme").textContent = s;
+    $("#nrsDeutung").textContent = s >= 3
+      ? "Ernährungsrisiko – Ernährungsplan erstellen und Team informieren."
+      : "Kein erhöhtes Risiko – wöchentlich erneut screenen.";
+  }
+}
+
+/* ================= Station: Zimmer, Betten, Belegung ================= */
+const STATIONSNAME = "Station 3A";
+const ZIMMERPLAN = [["310",2],["311",2],["312",2],["313",2],["314",2],["315",1]];
+const SPERRGRUENDE = [
+  "Privatpatient",
+  "Wahlleistung Einzelzimmer",
+  "Infektionszimmer / Isolierung",
+  "Für Aufnahme reserviert",
+  "Bett defekt",
+  "Reinigung und Desinfektion",
+  "Aufnahmestopp"
+];
+let BETTEN = [];          // alle Bettplätze der Station
+let OFFENERPLATZ = -1;    // Bettplatz, dessen Aktionsfeld gerade aufgeklappt ist
+
+function tageSeit(iso){
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  const t = Math.floor((new Date(heute()) - d) / 86400000);
+  return t >= 0 ? t : null;
+}
+function merkmale(p){
+  const c = [];
+  if (p.stamm.allergien) c.push(`<span class="mini warn">Allergie: ${esc(p.stamm.allergien.split("(")[0].trim())}</span>`);
+  if (p.stamm.isolation) c.push(`<span class="mini iso">${esc(p.stamm.isolation)}</span>`);
+  const opTag = tageSeit(p.stamm.opDatum);
+  if (opTag !== null) c.push(`<span class="mini op">${opTag}. Tag nach OP</span>`);
+  const offen = p.zugaenge.filter(z => !z.entfernt && z.art);
+  if (offen.some(z => /Blasenkatheter|Suprapubisch/i.test(z.art))) c.push('<span class="mini">Blasenkatheter</span>');
+  if (offen.some(z => /Magensonde|PEG/i.test(z.art))) c.push('<span class="mini">Sonde</span>');
+  if (offen.some(z => /Drainage/i.test(z.art))) c.push('<span class="mini">Drainage</span>');
+  if (offen.some(z => /Venenkatheter|Port|Arteriell/i.test(z.art))) c.push('<span class="mini">Zugang</span>');
+  if (p.wunden.length) c.push('<span class="mini">Wunde</span>');
+  const offeneAnordnungen = p.anordnungen.filter(a => (a.status || "offen") === "offen" && (a.text || "").trim()).length;
+  if (offeneAnordnungen) c.push(`<span class="mini warn">${offeneAnordnungen} offene Anordnung${offeneAnordnungen > 1 ? "en" : ""}</span>`);
+  const heuteTermin = p.diagnostik.filter(d => d.datum === heute() && d.name && !/durchgeführt|Befund|abgesagt/.test(d.status || "")).length;
+  if (heuteTermin) c.push(`<span class="mini op">${heuteTermin} Termin${heuteTermin > 1 ? "e" : ""} heute</span>`);
+  const braden = bradenSumme(p);
+  if (braden !== null) c.push(`<span class="mini">Braden ${braden}</span>`);
+  const sturz = STURZFAKTOREN.filter(([k]) => p.sturz[k]).length;
+  if (sturz) c.push(`<span class="mini">Sturz ${sturz} Faktoren</span>`);
+  const letzterTag = p.tage.length ? p.tage[p.tage.length-1] : null;
+  if (letzterTag && letzterTag.kost) c.push(`<span class="mini">${esc(letzterTag.kost)}</span>`);
+  if (p.stamm.betreuung && p.stamm.betreuung !== "keine") c.push(`<span class="mini">${esc(p.stamm.betreuung)}</span>`);
+  return c.join("");
+}
+
+function bettZeichnen(platz, i){
+  const gewaehlt = i === AKTIV && platz.status === "belegt" ? " gewaehlt" : "";
+  const nr = `<span class="bett-nr">Bett ${esc(platz.bett)}</span>`;
+
+  if (platz.status === "belegt" && platz.patient){
+    const p = platz.patient, s = p.stamm;
+    const name = [s.nachname, s.vorname].filter(Boolean).join(", ") || "ohne Namen";
+    const alter = alterAus(s.geb);
+    const zeile = [
+      s.geb ? "geb. " + dmy(s.geb) + s.geb.slice(0,4) : null,
+      alter === null ? null : alter + " J.",
+      s.fall ? "Fall " + s.fall : null,
+      s.aufnDatum ? "Aufn. " + dmy(s.aufnDatum) : null
+    ].filter(Boolean).join(" · ");
+    const sperre = s.auskunftssperre
+      ? `<button type="button" class="warnknopf nicht-drucken" data-aktion="sperrhinweis" data-i="${i}" title="Auskunftssperre" aria-label="Hinweis zur Auskunftssperre">!</button>`
+      : "";
+    return `<div class="bett belegt${gewaehlt}" data-platz="${i}">
+      ${nr}
+      <div class="bett-inhalt">
+        <div class="bett-name">${esc(name)}${sperre}</div>
+        <div class="bett-zeile">${esc(zeile)}</div>
+        <div class="bett-diag">${esc(s.diagnose || "keine Diagnose erfasst")}</div>
+        <div>${merkmale(p)}</div>
+        <div class="bett-zeile" style="margin-top:.35rem">Pflege
+          <input data-patfeld="${i}" value="${esc(s.pflegekraft || "")}" placeholder="Hz"
+                 style="width:64px;min-height:30px;padding:.15rem .3rem;text-transform:uppercase;font-family:var(--daten);display:inline-block"></div>
+      </div>
+      <div class="bett-knoepfe nicht-drucken">
+        <button type="button" class="klein haupt" data-aktion="oeffnen" data-i="${i}">öffnen</button>
+        <button type="button" class="klein loeschen" data-aktion="entlassen" data-i="${i}">entlassen</button>
+      </div>
+    </div>`;
+  }
+
+  if (platz.status === "gesperrt"){
+    const panel = OFFENERPLATZ === i ? `
+      <div class="sperr-panel">
+        <div class="reihe">
+          <button type="button" class="klein haupt nicht-drucken" data-aktion="entsperren" data-i="${i}">Sperre aufheben</button>
+        </div>
+      </div>` : "";
+    return `<div class="bett gesperrt" data-platz="${i}">
+      ${nr}
+      <div class="bett-inhalt">
+        <span class="sperrgrund">gesperrt: ${esc(platz.grund || "ohne Grund")}</span>
+        ${platz.bemerkung ? `<div class="bett-zeile" style="margin-top:.25rem">${esc(platz.bemerkung)}</div>` : ""}
+      </div>
+    </div>${panel}`;
+  }
+
+  const panel = OFFENERPLATZ === i ? `
+    <div class="sperr-panel">
+      <div class="reihe">
+        <button type="button" class="klein haupt nicht-drucken" data-aktion="aufnehmen" data-i="${i}">Patient aufnehmen</button>
+      </div>
+      <div class="reihe">
+        <select data-sperrgrund="${i}" aria-label="Grund für die Sperrung">
+          ${SPERRGRUENDE.map(g => `<option>${esc(g)}</option>`).join("")}
+        </select>
+        <input data-sperrbem="${i}" placeholder="Bemerkung (optional)">
+        <button type="button" class="klein nicht-drucken" data-aktion="sperren" data-i="${i}">Bett sperren</button>
+      </div>
+    </div>` : "";
+  return `<div class="bett leer" data-platz="${i}">
+    ${nr}
+    <div class="bett-inhalt"><span class="frei">frei – antippen zum Belegen oder Sperren</span></div>
+  </div>${panel}`;
+}
+
+function stationZeichnen(){
+  const raster = $("#zimmerRaster");
+  let html = "";
+  ZIMMERPLAN.forEach(([zimmer]) => {
+    const plaetze = BETTEN.map((b,i) => ({b,i})).filter(({b}) => b.zimmer === zimmer);
+    const belegt = plaetze.filter(({b}) => b.status === "belegt").length;
+    html += `<div class="zimmer">
+      <h4>Zimmer ${esc(zimmer)}<span>${belegt} von ${plaetze.length} belegt</span></h4>
+      ${plaetze.map(({b,i}) => bettZeichnen(b,i)).join("")}
+    </div>`;
+  });
+  raster.innerHTML = html;
+  const belegtGesamt = BETTEN.filter(b => b.status === "belegt").length;
+  const gesperrt = BETTEN.filter(b => b.status === "gesperrt").length;
+  $("#stationKopf").textContent =
+    `${STATIONSNAME} · ${belegtGesamt} von ${BETTEN.length} Betten belegt` +
+    (gesperrt ? ` · ${gesperrt} gesperrt` : "") +
+    ` · Stand ${dmy(heute()) + heute().slice(0,4)}`;
+}
+
+/* ---------- Meldungsfenster ---------- */
+function meldung(titel, text){
+  $("#modalTitel").textContent = titel;
+  $("#modalText").innerHTML = text;
+  $("#modalHg").hidden = false;
+}
+$("#modalZu").addEventListener("click", () => { $("#modalHg").hidden = true; });
+$("#modalHg").addEventListener("click", e => { if (e.target.id === "modalHg") $("#modalHg").hidden = true; });
+
+/* ---------- Bettplätze verwalten ---------- */
+function bettOeffnen(i){
+  const platz = BETTEN[i];
+  if (!platz || platz.status !== "belegt" || !platz.patient) return;
+  const merk = {hz:(Z && Z.meta.hz) || "", logo:(Z && Z.meta.logo) || ""};
+  AKTIV = i;
+  Z = platz.patient;
+  Z.meta.hz = merk.hz; Z.meta.logo = merk.logo;
+  OFFENERPLATZ = -1;
+  allesZeichnen();
+  seiteZeigen("stamm");
+}
+function naechsteFallnummer(){
+  const nummern = BETTEN
+    .filter(b => b.patient)
+    .map(b => parseInt(b.patient.stamm.fall, 10))
+    .filter(n => !isNaN(n));
+  return String((nummern.length ? Math.max(...nummern) : 1024700) + 1);
+}
+function patientAufnehmen(i){
+  const platz = BETTEN[i];
+  if (!platz || platz.status === "belegt") return;
+  const merk = {hz:(Z && Z.meta.hz) || "", logo:(Z && Z.meta.logo) || ""};
+  const p = leerZustand();
+  p.stamm.station = STATIONSNAME;
+  p.stamm.zimmer = platz.zimmer + " / " + platz.bett;
+  p.stamm.aufnDatum = heute();
+  p.stamm.aufnZeit = jetzt();
+  p.stamm.fall = naechsteFallnummer();
+  p.hkopf.datum = heute();
+  platz.status = "belegt"; platz.grund = ""; platz.bemerkung = ""; platz.patient = p;
+  AKTIV = i; Z = p; Z.meta = merk;
+  OFFENERPLATZ = -1;
+  allesZeichnen();
+  seiteZeigen("stamm");
+  const feld = $("#s-nachname");
+  if (feld) feld.focus();
+}
+function bettSperren(i){
+  const platz = BETTEN[i];
+  if (!platz || platz.status === "belegt") return;
+  const auswahl = document.querySelector(`[data-sperrgrund="${i}"]`);
+  const bem = document.querySelector(`[data-sperrbem="${i}"]`);
+  platz.status = "gesperrt";
+  platz.grund = auswahl ? auswahl.value : SPERRGRUENDE[0];
+  platz.bemerkung = bem ? bem.value : "";
+  platz.patient = null;
+  OFFENERPLATZ = -1;
+  stationZeichnen();
+}
+function bettEntsperren(i){
+  const platz = BETTEN[i];
+  if (!platz) return;
+  platz.status = "frei"; platz.grund = ""; platz.bemerkung = "";
+  OFFENERPLATZ = -1;
+  stationZeichnen();
+}
+function patientEntlassen(i){
+  const platz = BETTEN[i];
+  if (!platz || platz.status !== "belegt" || !platz.patient) return;
+  const s = platz.patient.stamm;
+  const name = [s.nachname, s.vorname].filter(Boolean).join(", ") || "Dieser Patient";
+  if (!confirm(`${name} entlassen?\n\nDas Bett wird frei und die gesamte Dokumentation dieses Falls geht verloren.`)) return;
+  platz.status = "frei"; platz.patient = null; platz.grund = ""; platz.bemerkung = "";
+  if (AKTIV === i){
+    const naechstes = BETTEN.findIndex(b => b.status === "belegt" && b.patient);
+    if (naechstes >= 0){
+      const merk = {hz:Z.meta.hz, logo:Z.meta.logo};
+      AKTIV = naechstes; Z = BETTEN[naechstes].patient; Z.meta = merk;
+    } else {
+      AKTIV = -1; Z = leerZustand();
+    }
+  }
+  allesZeichnen();
+  seiteZeigen("station");
+}
+
+document.addEventListener("click", e => {
+  const knopf = e.target.closest("[data-aktion]");
+  if (knopf){
+    const i = +knopf.dataset.i;
+    switch (knopf.dataset.aktion){
+      case "oeffnen": bettOeffnen(i); break;
+      case "entlassen": patientEntlassen(i); break;
+      case "aufnehmen": patientAufnehmen(i); break;
+      case "sperren": bettSperren(i); break;
+      case "entsperren": bettEntsperren(i); break;
+      case "sperrhinweis": {
+        const s = BETTEN[i].patient.stamm;
+        meldung("Auskunftssperre", `<b>${esc([s.nachname, s.vorname].filter(Boolean).join(", "))}</b> hat eine Auskunftssperre erteilt.<br><br>
+          Es dürfen keine Auskünfte über den Aufenthalt oder den Zustand gegeben werden – weder am Telefon noch an Besucher, auch nicht an Angehörige.
+          Anfragen werden an die Stationsleitung weitergeleitet.${s.sperreNotiz ? "<br><br><i>" + esc(s.sperreNotiz) + "</i>" : ""}`);
+        break;
+      }
+    }
+    return;
+  }
+  const bett = e.target.closest("[data-platz]");
+  if (bett && !e.target.closest("input")){
+    const i = +bett.dataset.platz;
+    if (BETTEN[i].status === "belegt") bettOeffnen(i);
+    else { OFFENERPLATZ = OFFENERPLATZ === i ? -1 : i; stationZeichnen(); }
+  }
+});
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset && el.dataset.patfeld !== undefined){
+    const platz = BETTEN[+el.dataset.patfeld];
+    if (platz && platz.patient) platz.patient.stamm.pflegekraft = el.value;
+  }
+});
+
+/* ================= Fieberkurve ================= */
+function kurveZeichnen(){
+  const padL = 50, padR = 50, padT = 22, padB = 56, hoehe = 320;
+  const plotH = hoehe - padT - padB;
+  const reihen = Z.vital
+    .map(v => v)
+    .filter(v => zahl(v.rrSys) !== null || zahl(v.rrDia) !== null || zahl(v.puls) !== null || zahl(v.temp) !== null)
+    .sort((a,b) => ((a.datum||"9999")+(a.zeit||"99:99")).localeCompare((b.datum||"9999")+(b.zeit||"99:99")));
+
+  if (!reihen.length){
+    $("#kurveHuelle").innerHTML =
+      `<svg width="720" height="180" role="img" aria-label="Kurve ohne Werte">
+         <rect width="720" height="180" fill="#fff"></rect>
+         <text x="360" y="92" text-anchor="middle" fill="#5c6f7d" font-family="Segoe UI,sans-serif" font-size="14">
+           Sobald Messwerte eingetragen sind, wird hier die Kurve gezeichnet.</text>
+       </svg>`;
+    return;
+  }
+
+  const n = reihen.length;
+  const spalte = Math.max(80, (720 - padL - padR) / n);
+  const breite = padL + padR + spalte * n;
+  const x = i => padL + spalte * i + spalte/2;
+  const klemm = (v,min,max) => Math.min(max, Math.max(min, v));
+  const yP = v => padT + (200 - klemm(v,40,200)) / 160 * plotH;
+  const yT = v => padT + (41 - klemm(v,35,41)) / 6 * plotH;
+
+  let s = `<svg width="${breite}" height="${hoehe}" role="img" aria-label="Verlaufskurve der Vitalwerte">
+    <rect width="${breite}" height="${hoehe}" fill="#fff"></rect>`;
+
+  for (let v = 40; v <= 200; v += 20){
+    const y = yP(v);
+    s += `<line x1="${padL}" y1="${y}" x2="${breite-padR}" y2="${y}" stroke="${v%40===0?"#d5dfe7":"#eaeff3"}" stroke-width="1"></line>
+          <text x="${padL-8}" y="${y+4}" text-anchor="end" font-family="ui-monospace,monospace" font-size="10" fill="#5c6f7d">${v}</text>`;
+  }
+  for (let t = 35; t <= 41; t++){
+    const y = yT(t);
+    s += `<text x="${breite-padR+8}" y="${y+4}" font-family="ui-monospace,monospace" font-size="10" fill="#1f5fb0">${t},0</text>`;
+  }
+  s += `<text x="${padL-8}" y="${padT-8}" text-anchor="end" font-family="Segoe UI,sans-serif" font-size="10" fill="#5c6f7d">mmHg / min</text>
+        <text x="${breite-padR+8}" y="${padT-8}" font-family="Segoe UI,sans-serif" font-size="10" fill="#1f5fb0">°C</text>`;
+
+  reihen.forEach((_,i) => {
+    s += `<line x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${padT+plotH}" stroke="#eef2f5" stroke-width="1"></line>`;
+  });
+  s += `<line x1="${padL}" y1="${padT+plotH}" x2="${breite-padR}" y2="${padT+plotH}" stroke="#9fb2be" stroke-width="1"></line>`;
+
+  // Blutdruck als Spanne mit Pfeilspitzen
+  reihen.forEach((r,i) => {
+    const sys = zahl(r.rrSys), dia = zahl(r.rrDia), xi = x(i);
+    if (sys !== null && dia !== null){
+      s += `<line x1="${xi}" y1="${yP(sys)}" x2="${xi}" y2="${yP(dia)}" stroke="#1d2b33" stroke-width="2"></line>
+            <polygon points="${xi-5},${yP(sys)-7} ${xi+5},${yP(sys)-7} ${xi},${yP(sys)}" fill="#1d2b33"></polygon>
+            <polygon points="${xi-5},${yP(dia)+7} ${xi+5},${yP(dia)+7} ${xi},${yP(dia)}" fill="#1d2b33"></polygon>`;
+    } else if (sys !== null){
+      s += `<line x1="${xi-6}" y1="${yP(sys)}" x2="${xi+6}" y2="${yP(sys)}" stroke="#1d2b33" stroke-width="2"></line>`;
+    } else if (dia !== null){
+      s += `<line x1="${xi-6}" y1="${yP(dia)}" x2="${xi+6}" y2="${yP(dia)}" stroke="#1d2b33" stroke-width="2"></line>`;
+    }
+  });
+
+  const linie = (feld, yFn, farbe) => {
+    const punkte = reihen.map((r,i) => { const v = zahl(r[feld]); return v === null ? null : {x:x(i), y:yFn(v)}; });
+    let out = "", lauf = [];
+    const schliessen = () => {
+      if (lauf.length > 1) out += `<polyline points="${lauf.map(p=>p.x+","+p.y).join(" ")}" fill="none" stroke="${farbe}" stroke-width="2"></polyline>`;
+      lauf = [];
+    };
+    punkte.forEach(p => { if (p) lauf.push(p); else schliessen(); });
+    schliessen();
+    punkte.forEach(p => { if (p) out += `<circle cx="${p.x}" cy="${p.y}" r="3.6" fill="${farbe}"></circle>`; });
+    return out;
+  };
+  s += linie("puls", yP, "#c0392b");
+  s += linie("temp", yT, "#1f5fb0");
+
+  let letzterTag = "";
+  reihen.forEach((r,i) => {
+    const xi = x(i);
+    s += `<text x="${xi}" y="${padT+plotH+18}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#152530">${esc(r.zeit||"")}</text>`;
+    if (r.datum && r.datum !== letzterTag){
+      s += `<text x="${xi}" y="${padT+plotH+34}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" font-weight="700" fill="#0b3a5d">${esc(dmy(r.datum))}</text>`;
+      letzterTag = r.datum;
+    }
+  });
+
+  s += `</svg>`;
+  $("#kurveHuelle").innerHTML = s;
+}
+
+/* ================= Zeilen anlegen und löschen ================= */
+function schichtJetzt(){
+  const h = new Date().getHours();
+  if (h >= 6 && h < 14) return "Frühdienst";
+  if (h >= 14 && h < 22) return "Spätdienst";
+  return "Nachtdienst";
+}
+const VORLAGE = {
+  vital:   () => ({datum:heute(), zeit:jetzt(), hz:Z.meta.hz || ""}),
+  tage:    () => {
+    const zeile = {datum:heute(), hz:Z.meta.hz || ""};
+    if (Z.stamm.opDatum){
+      const t = Math.floor((new Date(zeile.datum) - new Date(Z.stamm.opDatum)) / 86400000);
+      if (t >= 0) zeile.postOp = String(t);
+    }
+    return zeile;
+  },
+  zugaenge:() => ({gelegt:heute(), hz:Z.meta.hz || ""}),
+  anordnungen:() => ({datum:heute(), zeit:jetzt(), status:"offen", uebernommen:Z.meta.hz || ""}),
+  diagnostik:() => ({datum:heute(), zeit:jetzt(), status:"angemeldet", hz:Z.meta.hz || ""}),
+  dauer:   () => ({}),
+  bedarf:  () => ({}),
+  gaben:   () => ({datum:heute(), zeit:jetzt(), hz:Z.meta.hz || "", gegeben:false}),
+  wunden:  () => ({datum:heute(), zeit:jetzt(), hz:Z.meta.hz || ""}),
+  bericht: () => ({datum:heute(), zeit:jetzt(), hz:Z.meta.hz || "", schicht:schichtJetzt()}),
+  handlungen: () => ({kat:EIGENE_GRUPPE, name:"", geplant:"",
+    fDone:false, fZeit:"", fHz:"", sDone:false, sZeit:"", sHz:"", nDone:false, nZeit:"", nHz:"", bem:"", eigen:true})
+};
+const ZEICHNER = {
+  vital:vitalZeichnen, tage:tageZeichnen, zugaenge:zugaengeZeichnen, dauer:dauerZeichnen, bedarf:bedarfZeichnen,
+  gaben:gabenZeichnen, anordnungen:anordnungenZeichnen, diagnostik:diagnostikZeichnen,
+  wunden:wundenZeichnen, bericht:berichtZeichnen,
+  handlungen:handlungenZeichnen
+};
+
+document.addEventListener("click", e => {
+  const neu = e.target.closest("[data-neu]");
+  if (neu){
+    const arr = neu.dataset.neu;
+    Z[arr].push(VORLAGE[arr]());
+    ZEICHNER[arr]();
+    stationZeichnen();
+    const letzte = document.querySelectorAll(`[data-arr="${arr}"][data-i="${Z[arr].length-1}"]`);
+    if (letzte.length){
+      const ziel = arr === "bericht" ? letzte[letzte.length-1] : letzte[0];
+      ziel.scrollIntoView({block:"center", behavior:"smooth"});
+      ziel.focus({preventScroll:true});
+    }
+    return;
+  }
+  const del = e.target.closest("[data-del]");
+  if (del){
+    const arr = del.dataset.del, i = +del.dataset.i;
+    const gefuellt = Object.entries(Z[arr][i] || {}).some(([k,v]) => k !== "gegeben" && String(v || "").trim() !== "");
+    if (!gefuellt || confirm("Diesen Eintrag wirklich löschen?")){
+      Z[arr].splice(i,1);
+      ZEICHNER[arr]();
+      stationZeichnen();
+    }
+  }
+});
+
+/* ================= Navigation ================= */
+function seiteZeigen(name){
+  $$("nav [data-seite]").forEach(b => {
+    if (b.dataset.seite === name) b.setAttribute("aria-current","page");
+    else b.removeAttribute("aria-current");
+  });
+  $$(".seite").forEach(s => s.classList.remove("aktiv"));
+  const ziel = $("#seite-" + name);
+  if (ziel) ziel.classList.add("aktiv");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+$$("nav [data-seite]").forEach(btn => btn.addEventListener("click", () => seiteZeigen(btn.dataset.seite)));
+
+/* ================= Alles neu zeichnen ================= */
+function allesZeichnen(){
+  formulareFuellen();
+  bandZeichnen(); rechnenStamm(); scoresZeichnen();
+  vitalZeichnen(); tageZeichnen(); zugaengeZeichnen(); dauerZeichnen(); bedarfZeichnen(); gabenZeichnen();
+  anordnungenZeichnen(); diagnostikZeichnen();
+  wundenZeichnen(); berichtZeichnen(); handlungenZeichnen(); logoZeichnen(); stationZeichnen();
+}
+function hatInhalt(){
+  const felder = ["stamm","anam","braden","sturz","nrs","hkopf"].some(o => Object.values(Z[o]).some(v => String(v||"").trim() !== "" && v !== false));
+  const listen = ["vital","tage","zugaenge","dauer","bedarf","gaben","anordnungen","diagnostik","wunden","bericht"].some(a => Z[a].length);
+  const haken = Z.handlungen.some(h => h.fDone || h.sDone || h.nDone || h.eigen || String(h.bem||"").trim() !== "");
+  return felder || listen || haken;
+}
+
+/* ================= Logo ================= */
+/* Dauerhaft einbinden: unten bei LOGO_FEST eine Data-URL des Logos eintragen,
+   dann erscheint es bei jedem Öffnen automatisch. */
+const LOGO_FEST = "";
+
+function logoZeichnen(){
+  const bild = $("#logoBild"), quelle = Z.meta.logo || LOGO_FEST;
+  if (quelle){ bild.src = quelle; bild.hidden = false; $("#btnLogoWeg").hidden = false; $("#btnLogo").textContent = "Logo ersetzen"; }
+  else { bild.removeAttribute("src"); bild.hidden = true; $("#btnLogoWeg").hidden = true; $("#btnLogo").textContent = "Logo laden"; }
+}
+$("#btnLogo").addEventListener("click", () => $("#logoDatei").click());
+$("#logoDatei").addEventListener("change", e => {
+  const datei = e.target.files && e.target.files[0];
+  if (!datei) return;
+  if (datei.size > 3000000){ alert("Das Bild ist größer als 3 MB. Bitte ein kleineres Logo wählen."); return; }
+  const leser = new FileReader();
+  leser.onload = () => { Z.meta.logo = leser.result; logoZeichnen(); };
+  leser.onerror = () => alert("Das Bild konnte nicht gelesen werden. Bitte eine andere Datei wählen.");
+  leser.readAsDataURL(datei);
+  e.target.value = "";
+});
+$("#btnLogoWeg").addEventListener("click", () => { Z.meta.logo = ""; logoZeichnen(); });
+
+/* ================= Wasserzeichen unter jeder Seite ================= */
+$$(".seite").forEach(s => s.insertAdjacentHTML("beforeend",
+  '<p class="wasserzeichen">Entwickelt von Jörn Löwenstein mit Hilfe von Claude</p>'));
+
+/* ================= Haken zurücksetzen ================= */
+$("#btnHakenWeg").addEventListener("click", () => {
+  if (!confirm("Alle Haken, Uhrzeiten und Bemerkungen im Durchführungsnachweis löschen?")) return;
+  Z.handlungen.forEach(h => {
+    ["f","s","n"].forEach(pre => { h[pre+"Done"] = false; h[pre+"Zeit"] = ""; h[pre+"Hz"] = ""; });
+    h.bem = "";
+  });
+  handlungenZeichnen();
+});
+
+$("#btnStation").addEventListener("click", () => seiteZeigen("station"));
+$("#btnLeer").addEventListener("click", () => {
+  if (AKTIV < 0 || !BETTEN[AKTIV] || !BETTEN[AKTIV].patient){
+    meldung("Kein Patient geöffnet", "Bitte zuerst in der Stationsübersicht ein belegtes Bett öffnen.");
+    return;
+  }
+  const name = [Z.stamm.nachname, Z.stamm.vorname].filter(Boolean).join(", ") || "diesem Patienten";
+  if (!confirm(`Die gesamte Dokumentation von ${name} löschen?\n\nDie Stammdaten bleiben erhalten, alles andere wird zurückgesetzt – gut geeignet, um denselben Fall noch einmal von vorn dokumentieren zu lassen.`)) return;
+  const merk = {hz:Z.meta.hz, logo:Z.meta.logo};
+  const stamm = Z.stamm;
+  const frisch = leerZustand();
+  frisch.meta = merk;
+  frisch.stamm = stamm;
+  BETTEN[AKTIV].patient = frisch;
+  Z = frisch;
+  allesZeichnen();
+});
+$("#btnDruck").addEventListener("click", () => window.print());
+$("#btnFall").addEventListener("click", () => {
+  if (!confirm("Die ganze Station auf den Ausgangszustand zurücksetzen?\n\nAlle Eintragungen, Aufnahmen, Sperrungen und Entlassungen gehen dabei verloren.")) return;
+  const merk = {hz:Z.meta.hz, logo:Z.meta.logo};
+  stationAufbauen();
+  AKTIV = BETTEN.findIndex(b => b.status === "belegt");
+  Z = AKTIV >= 0 ? BETTEN[AKTIV].patient : leerZustand();
+  Z.meta = merk;
+  OFFENERPLATZ = -1;
+  allesZeichnen();
+  seiteZeigen("station");
+});
+</script>
+
+<script>
+"use strict";
+
+/* ================= Fallbeispiele (alle Personen frei erfunden) ================= */
+function patientBauen(teile){
+  const p = leerZustand();
+  Object.keys(teile).forEach(k => {
+    if (Array.isArray(teile[k])) p[k] = teile[k];
+    else Object.assign(p[k], teile[k]);
+  });
+  return p;
+}
+function planSetzen(liste, eintraege){
+  eintraege.forEach(([name, geplant]) => {
+    const e = liste.find(x => x.name === name);
+    if (e) e.geplant = geplant;
+  });
+  return liste;
+}
+function hakenSetzen(liste, eintraege){
+  eintraege.forEach(([name, schicht, zeit, hz, bem]) => {
+    const e = liste.find(x => x.name === name);
+    if (!e) return;
+    e[schicht+"Done"] = true; e[schicht+"Zeit"] = zeit; e[schicht+"Hz"] = hz;
+    if (bem) e.bem = e.bem ? e.bem + " | " + bem : bem;
+  });
+  return liste;
+}
+
+function patientBrenner(){
+  const d2 = tagVersetzt(-2), d1 = tagVersetzt(-1), d0 = heute();
+  const handlungen = katalogNeu();
+  const hake = (name, schicht, zeit, hz, bem) => {
+    const e = handlungen.find(x => x.name === name);
+    if (!e) return;
+    e[schicht+"Done"] = true; e[schicht+"Zeit"] = zeit; e[schicht+"Hz"] = hz;
+    if (bem) e.bem = e.bem ? e.bem + " | " + bem : bem;
+  };
+  const plane = (name, geplant) => { const e = handlungen.find(x => x.name === name); if (e) e.geplant = geplant; };
+  plane("Positionswechsel nach Bewegungsplan", "alle 3 Std.");
+  plane("Pneumonieprophylaxe und Atemübungen", "3x täglich");
+  plane("Vitalzeichenkontrolle", "3x täglich");
+  plane("Blutzuckerkontrolle", "vor den Mahlzeiten");
+  plane("Trinken angeboten", "stündlich");
+  plane("Hautpflege und Hautinspektion", "täglich");
+  hake("Vitalzeichenkontrolle", "f", "06:00", "AK");
+  hake("Vitalzeichenkontrolle", "s", "14:30", "SB");
+  hake("Blutzuckerkontrolle", "f", "06:05", "AK", "121 mg/dl");
+  hake("Ganzkörperwaschung", "f", "08:10", "AK", "am Waschbecken im Sitzen, zwei Pausen wegen Atemnot");
+  hake("Mund- und Zahnpflege", "f", "08:30", "AK", "Prothese oben gereinigt");
+  hake("Mund- und Zahnpflege", "s", "19:40", "SB");
+  hake("Hautpflege und Hautinspektion", "f", "08:35", "AK", "Sakralbereich siehe Wunddokumentation");
+  hake("Positionswechsel nach Bewegungsplan", "f", "09:00", "AK");
+  hake("Positionswechsel nach Bewegungsplan", "s", "15:00", "SB");
+  hake("Positionswechsel nach Bewegungsplan", "n", "02:30", "MS", "wacht dabei kurz auf, schläft rasch wieder ein");
+  hake("Pneumonieprophylaxe und Atemübungen", "f", "09:15", "AK", "Lippenbremse, drei Durchgänge, gut mitgemacht");
+  hake("Pneumonieprophylaxe und Atemübungen", "s", "16:30", "SB");
+  hake("Transfer Bett – Stuhl", "f", "09:40", "AK", "mit Unterstützung einer Pflegekraft");
+  hake("Essen gereicht oder begleitet", "f", "12:00", "AK", "Mittagessen zur Hälfte gegessen");
+  hake("Trink- oder Ernährungsprotokoll geführt", "f", "12:15", "AK");
+  hake("Medikamente verabreicht", "f", "07:15", "AK", "siehe Gabendokumentation");
+  hake("Thromboseprophylaxe", "n", "22:00", "MS", "Clexane 40 mg s.c.");
+  hake("Zuwendung und Gespräch", "f", "10:30", "AK", "Sorge um die Versorgung zu Hause, Sozialdienst informiert");
+  hake("Zugang oder Kanüle kontrolliert", "s", "15:10", "SB", "Einstichstelle reizlos");
+  return {
+    meta:{hz:"", logo:""},
+    hkopf:{datum:d0, hzF:"AK", hzS:"SB", hzN:"MS"},
+    handlungen,
+    stamm:{
+      nachname:"Brenner", vorname:"Werner", geb:"1946-03-12", geschlecht:"männlich",
+      sprache:"deutsch, Hörgerät rechts",
+      fall:"1024577", station:"Station 3A", zimmer:"312 / 2", pflegekraft:"AK",
+      aufnDatum:d2, aufnZeit:"18:40", aufnArt:"Notaufnahme",
+      kasse:"AOK Hessen", hausarzt:"Dr. med. Sanders, Wolfhagen",
+      diagnose:"Ambulant erworbene Pneumonie bei COPD",
+      nebendiagnosen:"COPD Gold III\nArterielle Hypertonie\nDiabetes mellitus Typ 2, oral eingestellt\nZ. n. Cholezystektomie 2018",
+      groesse:"174", gewicht:"68.5",
+      allergien:"Penicillin (Exanthem)", isolation:"", keim:"",
+      angehName:"Andrea Brenner", angehBez:"Tochter", angehTel:"0170 4455112",
+      betreuung:"Vorsorgevollmacht", patverf:"liegt vor", auskunft:"Tochter Andrea Brenner"
+    },
+    anam:{
+      vorerkrankungen:"COPD seit 2009, mehrfach exazerbiert; Bluthochdruck seit 2001; Diabetes mellitus Typ 2 seit 2014; Gallenblasenentfernung 2018",
+      hausmedikation:"Tabletten werden von der Tochter wöchentlich in eine Dosette gerichtet; Inhalator wendet er selbstständig an, Technik unsicher",
+      nikotin:"ca. 20 Zigaretten täglich über 40 Jahre, seit 2019 rauchfrei",
+      alkohol:"gelegentlich ein Bier am Wochenende",
+      impf:"Grippeimpfung Herbst 2025, Pneumokokken unklar",
+      wohnsituation:"Erdgeschosswohnung, 4 Stufen zur Haustür, Dusche ebenerdig",
+      lebtMit:"allein, seit dem Tod der Ehefrau 2023",
+      beruf:"Schlosser, seit 2011 in Rente",
+      pflegegrad:"2",
+      pflegedienst:"kein Pflegedienst; Tochter hilft zweimal wöchentlich beim Einkauf und Haushalt",
+      versorgung:"Tochter ist berufstätig und kann tagsüber nicht da sein. Beratung zu ambulantem Pflegedienst und Kurzzeitpflege ist offen, Sozialdienst am " + dmy(d1) + " informiert.",
+      koerperpflege:"Wäscht Gesicht und Oberkörper selbstständig am Waschbecken im Sitzen. Rücken, Beine und Füße übernimmt die Pflege. Braucht Pausen wegen Atemnot, möchte morgens duschen.",
+      mobilitaet:"Gehstrecke ca. 20 m mit Rollator, danach Atemnot und Pause. Transfer Bett–Stuhl mit Unterstützung einer Pflegekraft. Ein Sturz im Bad vor drei Monaten, ohne Verletzung.",
+      ernaehrung:"Vollkost, isst kleine Portionen und lässt oft die Hälfte stehen. Zahnprothese oben. Trinkmenge zu Hause etwa 800 ml täglich. Mag keinen Milchreis, trinkt gern Kaffee ohne Zucker.",
+      ausscheidung:"Kontinent, nachts Urinflasche am Bett. Letzter Stuhlgang vor zwei Tagen, sonst alle zwei Tage.",
+      schlaf:"Schläft mit erhöhtem Oberkörper, wacht wegen Husten mehrfach auf. Zu Hause kein Schlafmittel.",
+      kognition:"Wach, zu allen Qualitäten orientiert. Hörgerät rechts, Lesebrille. Spricht leise und in kurzen Sätzen wegen Atemnot.",
+      hilfsmittel:"Rollator, Hörgerät rechts, Lesebrille, Zahnprothese oben",
+      ressourcen:"Sehr motiviert, macht die Atemübungen zuverlässig mit. Kennt seine Erkrankung gut. Tochter ist eng eingebunden.",
+      wuensche:"Morgens duschen, Kaffee ohne Zucker, Zeitung am Vormittag",
+      datum:d2, hz:"MS"
+    },
+    braden:{empfinden:"4", feuchtigkeit:"3", aktivitaet:"2", mobilitaet:"3", ernaehrung:"2", reibung:"2",
+      datum:d2, hz:"MS",
+      massnahmen:"Bewegungsförderung und Positionswechsel mindestens alle 3 Stunden, Hautinspektion bei jeder Körperpflege, Weichlagerungsauflage, Mobilisation in den Sessel zu den Mahlzeiten."},
+    sturz:{f1:true, f2:true, f3:true, f7:true, f8:true, f10:true, datum:d2, hz:"MS",
+      massnahmen:"Klingel und Rollator in Reichweite, Nachtlicht an, Begleitung bei jedem Toilettengang anbieten, festes Schuhwerk von der Tochter bringen lassen, Bett auf niedrigster Position."},
+    nrs:{zustand:"2", schwere:"2", alter:"1", datum:d2, hz:"MS",
+      massnahmen:"Ernährungsprotokoll über 3 Tage, Wunschkost erfragen, Zwischenmahlzeiten anbieten, Trinkprotokoll, Rücksprache mit dem Ernährungsteam."},
+    vital:[
+      {datum:d2, zeit:"19:00", rrSys:"145", rrDia:"85", puls:"104", temp:"38.9", af:"26", spo2:"88", o2:"2 l", bz:"162", schmerzRuhe:"3", schmerzBewegung:"6", gewicht:"68.5", hz:"MS"},
+      {datum:d1, zeit:"06:00", rrSys:"138", rrDia:"82", puls:"96",  temp:"38.4", af:"22", spo2:"92", o2:"2 l", bz:"148", schmerzRuhe:"2", schmerzBewegung:"5", gewicht:"",     hz:"AK"},
+      {datum:d1, zeit:"13:00", rrSys:"132", rrDia:"78", puls:"88",  temp:"37.9", af:"20", spo2:"94", o2:"2 l", bz:"",    schmerzRuhe:"2", schmerzBewegung:"4", gewicht:"",     hz:"SB"},
+      {datum:d1, zeit:"20:00", rrSys:"128", rrDia:"76", puls:"84",  temp:"38.1", af:"20", spo2:"93", o2:"2 l", bz:"134", schmerzRuhe:"1", schmerzBewegung:"4", gewicht:"",     hz:"SB"},
+      {datum:d0, zeit:"06:00", rrSys:"126", rrDia:"74", puls:"78",  temp:"37.4", af:"18", spo2:"95", o2:"1 l", bz:"121", schmerzRuhe:"1", schmerzBewegung:"3", gewicht:"68.0", hz:"AK"},
+      {datum:d0, zeit:"12:00", rrSys:"130", rrDia:"80", puls:"76",  temp:"37.1", af:"18", spo2:"96", o2:"",    bz:"",    schmerzRuhe:"1", schmerzBewegung:"3", gewicht:"",     hz:"AK"}
+    ],
+    tage:[
+      {datum:d2, postOp:"", kost:"Vollkost", stuhlAnzahl:"0", stuhlArt:"", einfuhr:"400", urin:"", ausfuhrArt:"", ausfuhrMl:"", hz:"MS"},
+      {datum:d1, postOp:"", kost:"Vollkost", stuhlAnzahl:"0", stuhlArt:"", einfuhr:"1100", urin:"", ausfuhrArt:"", ausfuhrMl:"", hz:"AK"},
+      {datum:d0, postOp:"", kost:"Vollkost", stuhlAnzahl:"1", stuhlArt:"breiig", einfuhr:"700", urin:"", ausfuhrArt:"", ausfuhrMl:"", hz:"AK"}
+    ],
+    zugaenge:[
+      {art:"Peripherer Venenkatheter (PVK)", ort:"Unterarm rechts", gelegt:d2, kontrolle:"Einstichstelle reizlos, Verband trocken", entfernt:"", hz:"AK", bemerkung:"Größe 20 G, für die Antibiotikagabe"}
+    ],
+    anordnungen:[
+      {datum:d2, zeit:"19:10", art:"Medikament", text:"Moxifloxacin 400 mg i.v. über 60 Min., täglich 10:00 Uhr", arzt:"Dr. Lorenz", muendlich:true, uebernommen:"MS", status:"läuft", hz:"MS", bemerkung:"telefonisch angeordnet, Abzeichnung durch Dr. Lorenz steht noch aus"},
+      {datum:d2, zeit:"19:15", art:"Diagnostik", text:"Röntgen Thorax in 2 Ebenen", arzt:"Dr. Lorenz", muendlich:false, uebernommen:"MS", status:"erledigt", erledigt:d2, hz:"MS", bemerkung:"Befund: Infiltrat rechter Unterlappen, passend zur Pneumonie"},
+      {datum:d1, zeit:"08:30", art:"Diagnostik", text:"Blutgasanalyse unter 2 l O₂", arzt:"Dr. Lorenz", muendlich:false, uebernommen:"AK", status:"erledigt", erledigt:d1, hz:"AK", bemerkung:"Befund unauffällig, O₂ kann bei Bedarf reduziert werden"},
+      {datum:d0, zeit:"07:00", art:"Diagnostik", text:"Bronchoskopie zur Sekretgewinnung", arzt:"Dr. Lorenz", muendlich:false, uebernommen:"AK", status:"offen", hz:"AK", bemerkung:"Patient dafür nüchtern lassen, siehe Diagnostikliste"},
+      {datum:d0, zeit:"07:05", art:"Kostform", text:"nüchtern bis nach der Bronchoskopie, danach Vollkost wie gewohnt", arzt:"Dr. Lorenz", muendlich:false, uebernommen:"AK", status:"läuft", hz:"AK"}
+    ],
+    diagnostik:[
+      {datum:d2, zeit:"19:20", name:"Röntgen Thorax", ort:"Radiologie, Ebene 0", vorbereitung:"keine besondere Vorbereitung nötig", nuechtern:false, transport:"Bett", status:"durchgeführt", hz:"MS", bemerkung:"noch im Bett aus der Notaufnahme"},
+      {datum:d1, zeit:"08:15", name:"Blutgasanalyse", ort:"Station, am Bett", vorbereitung:"2 l O₂ zum Zeitpunkt der Abnahme beibehalten", nuechtern:false, transport:"selbstständig", status:"durchgeführt", hz:"AK"},
+      {datum:d0, zeit:"09:00", name:"Bronchoskopie", ort:"Endoskopie, Ebene 1", vorbereitung:"nüchtern ab Mitternacht, Aufklärungsbogen unterschrieben, Zugang liegt, Zahnprothese vor Transport entfernen", nuechtern:true, transport:"Bett", status:"Termin steht", hz:"AK", bemerkung:"Abholung durch den Transportdienst gegen 08:45 Uhr"}
+    ],
+    dauer:[
+      {name:"Avalox", wirkstoff:"Moxifloxacin", staerke:"400 mg", form:"Infusion i.v.", morgens:"1", mittags:"", abends:"", nachts:"", hinweis:"über 60 Minuten, täglich 10:00 – kein Penicillin!", angeordnet:"Dr. Lorenz " + dmy(d2)},
+      {name:"Berodual", wirkstoff:"Fenoterol + Ipratropiumbromid", staerke:"2,5 ml", form:"Vernebler", morgens:"1", mittags:"1", abends:"1", nachts:"", hinweis:"vor der Atemtherapie", angeordnet:"Dr. Lorenz " + dmy(d2)},
+      {name:"Decortin H", wirkstoff:"Prednisolon", staerke:"40 mg", form:"Tablette", morgens:"1", mittags:"", abends:"", nachts:"", hinweis:"nach dem Frühstück, BZ engmaschig", angeordnet:"Dr. Lorenz " + dmy(d2)},
+      {name:"Delix", wirkstoff:"Ramipril", staerke:"5 mg", form:"Tablette", morgens:"1", mittags:"", abends:"", nachts:"", hinweis:"RR vor der Gabe kontrollieren", angeordnet:"Dr. Lorenz " + dmy(d2)},
+      {name:"Glucophage", wirkstoff:"Metformin", staerke:"1000 mg", form:"Tablette", morgens:"1", mittags:"", abends:"1", nachts:"", hinweis:"zu den Mahlzeiten", angeordnet:"Dr. Lorenz " + dmy(d2)},
+      {name:"Pantozol", wirkstoff:"Pantoprazol", staerke:"40 mg", form:"Tablette", morgens:"1", mittags:"", abends:"", nachts:"", hinweis:"nüchtern, 30 Min. vor dem Frühstück", angeordnet:"Dr. Lorenz " + dmy(d2)},
+      {name:"Clexane", wirkstoff:"Enoxaparin", staerke:"40 mg", form:"Fertigspritze s.c.", morgens:"", mittags:"", abends:"", nachts:"1", hinweis:"Thromboseprophylaxe, 22:00", angeordnet:"Dr. Lorenz " + dmy(d2)}
+    ],
+    bedarf:[
+      {name:"ben-u-ron", wirkstoff:"Paracetamol", dosis:"1 g", applikation:"p.o.", indikation:"Temperatur über 38,5 °C oder Schmerz", maxTag:"4 g", abstand:"6 Std."},
+      {name:"Novalgin Tropfen", wirkstoff:"Metamizol", dosis:"20 Tropfen", applikation:"p.o.", indikation:"Schmerz ab NRS 4", maxTag:"4 Gaben", abstand:"6 Std."},
+      {name:"Sultanol Dosieraerosol", wirkstoff:"Salbutamol", dosis:"2 Hübe", applikation:"inhalativ", indikation:"akute Atemnot", maxTag:"8 Hübe", abstand:"4 Std."},
+      {name:"Movicol", wirkstoff:"Macrogol", dosis:"1 Beutel", applikation:"p.o.", indikation:"kein Stuhlgang seit mehr als 3 Tagen", maxTag:"3 Beutel", abstand:"8 Std."}
+    ],
+    gaben:[
+      {datum:d1, zeit:"06:30", name:"Morgenmedikation laut Plan", wirkstoff:"", dosis:"", applikation:"p.o.", gegeben:true, hz:"AK", bemerkung:"vollständig eingenommen"},
+      {datum:d1, zeit:"10:00", name:"Avalox", wirkstoff:"Moxifloxacin", dosis:"400 mg", applikation:"i.v. Infusion", gegeben:true, hz:"AK", bemerkung:"über 60 Minuten, gut vertragen, kein Exanthem"},
+      {datum:d1, zeit:"14:20", name:"ben-u-ron", wirkstoff:"Paracetamol", dosis:"1 g", applikation:"p.o.", gegeben:true, hz:"SB", bemerkung:"bei 38,4 °C; um 16:00 Uhr 37,9 °C"},
+      {datum:d0, zeit:"07:15", name:"Glucophage", wirkstoff:"Metformin", dosis:"1000 mg", applikation:"p.o.", gegeben:false, hz:"AK", bemerkung:"nicht gegeben, Patient nüchtern für Bronchoskopie; Dr. Lorenz informiert, Gabe nach der Untersuchung"}
+    ],
+    wunden:[
+      {datum:d1, zeit:"08:30", lokalisation:"Sakralbereich", art:"Dekubitus", kategorie:"Kategorie 2",
+       laenge:"3.0", breite:"2.5", tiefe:"0.2",
+       wundgrund:"60 % Granulation, 40 % Fibrin", exsudatMenge:"mäßig", exsudatArt:"serös", geruch:"geruchlos",
+       wundrand:"reizlos, leicht mazeriert", umgebung:"Rötung ca. 1 cm um die Wunde, Haut trocken",
+       schmerz:"2", reinigung:"NaCl 0,9 %", auflage:"Schaumverband, Wechsel alle 2 Tage",
+       naechsterVw:tagVersetzt(1), hz:"MS",
+       bemerkung:"Wunde seit dem letzten Wechsel unverändert groß, Fibrinanteil etwas geringer. Positionierung nach Bewegungsplan, Weichlagerungsauflage im Bett."}
+    ],
+    bericht:[
+      {datum:d2, zeit:"19:20", schicht:"Spätdienst", hz:"MS",
+       text:"Aufnahme aus der Notaufnahme im Rollstuhl. Deutlich dyspnoisch, spricht in Halbsätzen, Atemfrequenz 26/min, SpO₂ 88 % ohne Sauerstoff. Nach Arztanordnung 2 l O₂ über Nasenbrille, danach SpO₂ 92 %. Oberkörper hochgelagert, Atemunterstützung durch Lippenbremse angeleitet, Patient wendet sie sicher an. Tochter über Zimmer und Besuchszeiten informiert. Klingel erklärt und in Reichweite gelegt."},
+      {datum:d1, zeit:"09:45", schicht:"Frühdienst", hz:"AK",
+       text:"Ganzkörperwaschung am Waschbecken im Sitzen, Rücken und Beine übernommen. Musste zweimal wegen Atemnot pausieren, SpO₂ dabei nicht unter 90 %. Anschließend in den Sessel mobilisiert, dort 40 Minuten toleriert. Frühstück zur Hälfte gegessen, Trinkmenge bis Mittag 500 ml. Trinkprotokoll begonnen."},
+      {datum:d0, zeit:"06:40", schicht:"Nachtdienst", hz:"SB",
+       text:"Nacht ruhiger als die vorherige, zweimal wegen Husten wach geworden, kein Sauerstoffabfall. Um 03:00 Uhr selbstständig mit Urinflasche versorgt. Temperatur um 05:30 Uhr 37,4 °C, keine Bedarfsmedikation nötig. Patient äußert Sorge, ob er wieder allein zurechtkommt – Sozialdienst für heute informiert."}
+    ]
+  };
+}
+
+/* ---------- Zimmer 310/1: Helga Kowalski, Z. n. Hüft-TEP ---------- */
+function patientKowalski(){
+  const dAuf = tagVersetzt(-4), dOp = tagVersetzt(-3), d2 = tagVersetzt(-2), d1 = tagVersetzt(-1), d0 = heute();
+  const handlungen = planSetzen(katalogNeu(), [
+    ["Vitalzeichenkontrolle","2x täglich"],
+    ["Positionswechsel nach Bewegungsplan","alle 4 Std."],
+    ["Gehen mit Hilfsmittel begleitet","3x täglich"],
+    ["Thromboseprophylaxe","täglich 22:00"],
+    ["Verbandwechsel","alle 2 Tage"],
+    ["Katheterpflege","2x täglich"]
+  ]);
+  hakenSetzen(handlungen, [
+    ["Vitalzeichenkontrolle","f","06:15","SB"],
+    ["Teilwaschung","f","07:40","SB","Oberkörper selbst, Beine und Rücken übernommen"],
+    ["Katheterpflege","f","07:50","SB"],
+    ["An- und Auskleiden","f","08:05","SB"],
+    ["Transfer Bett – Stuhl","f","09:10","SB","mit einer Pflegekraft, Teilbelastung eingehalten"],
+    ["Gehen mit Hilfsmittel begleitet","f","10:00","SB","ca. 15 m auf dem Flur mit Rollator"],
+    ["Gehen mit Hilfsmittel begleitet","s","16:20","AK","ca. 20 m, vorher Schmerz NRS 3"],
+    ["Sichere Umgebung geprüft","f","08:10","SB"],
+    ["Verbandwechsel","f","08:20","SB","siehe Wunddokumentation"],
+    ["Thromboseprophylaxe","n","22:00","MS","Clexane 40 mg s.c."]
+  ]);
+  return patientBauen({
+    stamm:{
+      nachname:"Kowalski", vorname:"Helga", geb:"1945-07-04", geschlecht:"weiblich", sprache:"deutsch",
+      fall:"1024612", station:"Station 3A", zimmer:"310 / 1", pflegekraft:"SB",
+      aufnDatum:dAuf, aufnZeit:"10:15", aufnArt:"geplante Aufnahme",
+      kasse:"Techniker Krankenkasse", hausarzt:"Dr. med. Peters, Kassel",
+      diagnose:"Z. n. Hüft-TEP rechts bei Coxarthrose",
+      nebendiagnosen:"Osteoporose\nHerzinsuffizienz NYHA II\nHypothyreose",
+      op:"Hüft-Totalendoprothese rechts", opDatum:dOp,
+      groesse:"162", gewicht:"74",
+      angehName:"Thomas Kowalski", angehBez:"Sohn", angehTel:"0561 998877",
+      betreuung:"keine", patverf:"liegt nicht vor", auskunft:"Sohn Thomas Kowalski"
+    },
+    anam:{
+      vorerkrankungen:"Coxarthrose beidseits, rechts endoprothetisch versorgt; Osteoporose seit 2016; Schilddrüsenunterfunktion",
+      wohnsituation:"Wohnung im 1. OG ohne Aufzug, 14 Stufen",
+      lebtMit:"allein", beruf:"Verkäuferin, seit 2010 in Rente", pflegegrad:"keiner",
+      pflegedienst:"keiner, der Sohn wohnt im gleichen Ort",
+      versorgung:"Anschlussheilbehandlung ist beantragt, Bescheid steht noch aus. Treppen zur Wohnung sind das Hauptproblem.",
+      mobilitaet:"Vor der Operation Gehstock, Gehstrecke etwa 200 m. Jetzt Transfer mit einer Pflegekraft, Teilbelastung 20 kg rechts nach ärztlicher Anordnung, Gehübungen mit Rollator.",
+      ausscheidung:"Blasenkatheter seit der Operation, Entfernung für morgen angeordnet",
+      kognition:"wach, zu allen Qualitäten orientiert",
+      hilfsmittel:"Gehstock, Rollator von der Station, Brille",
+      datum:dAuf, hz:"SB"
+    },
+    braden:{empfinden:"4", feuchtigkeit:"3", aktivitaet:"2", mobilitaet:"2", ernaehrung:"3", reibung:"2",
+      datum:dOp, hz:"SB",
+      massnahmen:"Positionswechsel alle 4 Stunden unter Beachtung der Teilbelastung, Fersenfreilagerung, Hautinspektion bei der Körperpflege."},
+    sturz:{f1:true, f2:true, f7:true, f8:true, f10:true, datum:dOp, hz:"SB",
+      massnahmen:"Rollator und Klingel in Reichweite, Aufstehen nur mit Begleitung, rutschfeste Schuhe, Bett niedrig stellen."},
+    nrs:{zustand:"0", schwere:"2", alter:"1", datum:dAuf, hz:"SB",
+      massnahmen:"Eiweißreiche Kost anbieten, Gewicht zweimal wöchentlich kontrollieren."},
+    hkopf:{datum:d0, hzF:"SB", hzS:"AK", hzN:"MS"},
+    handlungen,
+    vital:[
+      {datum:d1, zeit:"06:15", rrSys:"148", rrDia:"86", puls:"82", temp:"37.2", af:"16", spo2:"96", schmerzRuhe:"2", schmerzBewegung:"6", hz:"SB"},
+      {datum:d1, zeit:"17:00", rrSys:"138", rrDia:"80", puls:"78", temp:"37.4", af:"16", spo2:"97", schmerzRuhe:"2", schmerzBewegung:"5", hz:"AK"},
+      {datum:d0, zeit:"06:15", rrSys:"142", rrDia:"82", puls:"76", temp:"36.9", af:"16", spo2:"97", schmerzRuhe:"1", schmerzBewegung:"4", gewicht:"74", hz:"SB"}
+    ],
+    tage:[
+      {datum:d2, postOp:"1", kost:"Aufbaukost", stuhlAnzahl:"0", einfuhr:"900", urin:"1150", ausfuhrArt:"Redon-Drainage", ausfuhrMl:"180", hz:"SB"},
+      {datum:d1, postOp:"2", kost:"Vollkost", stuhlAnzahl:"0", einfuhr:"1400", urin:"1350", ausfuhrArt:"Redon-Drainage", ausfuhrMl:"60", hz:"AK"},
+      {datum:d0, postOp:"3", kost:"Vollkost", stuhlAnzahl:"1", stuhlArt:"weich", einfuhr:"700", urin:"600", hz:"SB"}
+    ],
+    zugaenge:[
+      {art:"Peripherer Venenkatheter (PVK)", ort:"Handrücken links", gelegt:dOp, kontrolle:"Einstichstelle reizlos", hz:"SB", bemerkung:"20 G"},
+      {art:"Blasenkatheter transurethral", ort:"Ch 14", gelegt:dOp, kontrolle:"Urin klar, bernsteinfarben", hz:"SB", bemerkung:"Entfernung für morgen ärztlich angeordnet"},
+      {art:"Drainage", ort:"Hüfte rechts, Redon", gelegt:dOp, kontrolle:"Sog vorhanden", entfernt:d1, hz:"AK", bemerkung:"insgesamt 240 ml serosanguinös"}
+    ],
+    anordnungen:[
+      {datum:dOp, zeit:"11:30", art:"Mobilisation", text:"Teilbelastung 20 kg rechtes Bein, Mobilisation ab dem 1. postoperativen Tag mit Physiotherapie", arzt:"Dr. Faber", muendlich:false, uebernommen:"SB", status:"läuft", hz:"SB"},
+      {datum:d1, zeit:"09:00", art:"Diagnostik", text:"Röntgenkontrolle Hüfte rechts", arzt:"Dr. Faber", muendlich:false, uebernommen:"SB", status:"erledigt", erledigt:d1, hz:"SB", bemerkung:"Prothesenlage regelrecht"},
+      {datum:d0, zeit:"07:00", art:"Pflegemaßnahme", text:"Blasenkatheter heute entfernen, danach Miktion protokollieren", arzt:"Dr. Faber", muendlich:false, uebernommen:"", status:"offen", hz:""}
+    ],
+    diagnostik:[
+      {datum:d1, zeit:"09:15", name:"Röntgen Hüfte rechts", ort:"Radiologie, Ebene 0", vorbereitung:"Transport mit dem Bett, Schmerzmedikation vorher geben", nuechtern:false, transport:"Bett", status:"durchgeführt", hz:"SB"}
+    ],
+    dauer:[
+      {name:"Targin", wirkstoff:"Oxycodon + Naloxon", staerke:"10/5 mg", form:"Retardtablette", morgens:"1", abends:"1", hinweis:"feste Zeiten 08:00 und 20:00", angeordnet:"Dr. Faber " + dmy(dOp)},
+      {name:"Novalgin", wirkstoff:"Metamizol", staerke:"500 mg", form:"Tablette", morgens:"1", mittags:"1", abends:"1", nachts:"1", hinweis:"vor der Mobilisation wirken lassen", angeordnet:"Dr. Faber " + dmy(dOp)},
+      {name:"Clexane", wirkstoff:"Enoxaparin", staerke:"40 mg", form:"Fertigspritze s.c.", nachts:"1", hinweis:"Thromboseprophylaxe, 22:00", angeordnet:"Dr. Faber " + dmy(dOp)},
+      {name:"L-Thyrox", wirkstoff:"Levothyroxin", staerke:"75 µg", form:"Tablette", morgens:"1", hinweis:"nüchtern, 30 Min. vor dem Frühstück", angeordnet:"Dr. Faber " + dmy(dAuf)},
+      {name:"Torem", wirkstoff:"Torasemid", staerke:"10 mg", form:"Tablette", morgens:"1", hinweis:"Gewicht kontrollieren", angeordnet:"Dr. Faber " + dmy(dAuf)},
+      {name:"Calcimagon D3", wirkstoff:"Calciumcarbonat + Colecalciferol", staerke:"500 mg / 400 I.E.", form:"Kautablette", morgens:"1", abends:"1", hinweis:"nicht zusammen mit L-Thyrox", angeordnet:"Dr. Faber " + dmy(dAuf)}
+    ],
+    bedarf:[
+      {name:"ben-u-ron", wirkstoff:"Paracetamol", dosis:"1 g", applikation:"p.o.", indikation:"Schmerz ab NRS 4", maxTag:"4 g", abstand:"6 Std."},
+      {name:"Laxoberal", wirkstoff:"Natriumpicosulfat", dosis:"10 Tropfen", applikation:"p.o.", indikation:"kein Stuhlgang seit 3 Tagen", maxTag:"1 Gabe", abstand:"24 Std."},
+      {name:"Vomex A", wirkstoff:"Dimenhydrinat", dosis:"1 Zäpfchen", applikation:"rektal", indikation:"Übelkeit", maxTag:"3 Gaben", abstand:"8 Std."}
+    ],
+    gaben:[
+      {datum:d0, zeit:"07:55", name:"Targin", wirkstoff:"Oxycodon + Naloxon", dosis:"10/5 mg", applikation:"p.o.", gegeben:true, hz:"SB", bemerkung:"vor der Mobilisation"},
+      {datum:d0, zeit:"09:30", name:"ben-u-ron", wirkstoff:"Paracetamol", dosis:"1 g", applikation:"p.o.", gegeben:true, hz:"SB", bemerkung:"vor der Gehübung, Schmerz danach NRS 3"}
+    ],
+    wunden:[
+      {datum:d0, zeit:"08:20", lokalisation:"Hüfte rechts, lateral", art:"OP-Wunde", kategorie:"primär heilend",
+       laenge:"14", breite:"0.3", wundgrund:"Klammernaht, trocken", exsudatMenge:"kein", geruch:"geruchlos",
+       wundrand:"adaptiert, reizlos", umgebung:"leichte Schwellung, nicht überwärmt", schmerz:"2",
+       reinigung:"keine, Verband trocken belassen", auflage:"steriler Wundschnellverband",
+       naechsterVw:tagVersetzt(2), hz:"SB",
+       bemerkung:"Keine Rötung, keine Sekretion. Klammern werden am 12. postoperativen Tag entfernt."}
+    ],
+    bericht:[
+      {datum:d1, zeit:"10:30", schicht:"Frühdienst", hz:"SB",
+       text:"Erste Gehübung mit dem Rollator auf dem Flur, etwa 15 m, Teilbelastung rechts wurde eingehalten. Vorher Schmerz in Bewegung NRS 6, nach Novalgin und Pause NRS 3. Patientin ist ängstlich beim Aufstehen und hält sich stark am Rollator fest."},
+      {datum:d0, zeit:"09:50", schicht:"Frühdienst", hz:"SB",
+       text:"Wunde trocken und reizlos, Verband gewechselt. Patientin fragt mehrfach nach der Anschlussheilbehandlung und sorgt sich wegen der Treppen zu Hause. Sozialdienst für morgen angemeldet, Sohn ist informiert."}
+    ]
+  });
+}
+
+/* ---------- Zimmer 311/1: Mehmet Yildiz, diabetisches Fußsyndrom ---------- */
+function patientYildiz(){
+  const d1 = tagVersetzt(-1), d0 = heute();
+  const handlungen = planSetzen(katalogNeu(), [
+    ["Blutzuckerkontrolle","4x täglich vor den Mahlzeiten"],
+    ["Injektion subkutan","nach Insulinplan"],
+    ["Verbandwechsel","täglich"],
+    ["Hautpflege und Hautinspektion","täglich, Füße beidseits"],
+    ["Beratung und Anleitung","täglich"]
+  ]);
+  hakenSetzen(handlungen, [
+    ["Vitalzeichenkontrolle","f","06:30","AK"],
+    ["Blutzuckerkontrolle","f","06:35","AK","142 mg/dl"],
+    ["Injektion subkutan","f","06:40","AK","NovoRapid nach Schema"],
+    ["Hautpflege und Hautinspektion","f","08:15","AK","beide Füße inspiziert, links unauffällig"],
+    ["Verbandwechsel","f","08:30","AK","siehe Wunddokumentation"],
+    ["Blutzuckerkontrolle","s","17:00","SB","165 mg/dl"],
+    ["Beratung und Anleitung","s","17:30","SB","Fußpflege und Schuhwerk besprochen"]
+  ]);
+  return patientBauen({
+    stamm:{
+      nachname:"Yildiz", vorname:"Mehmet", geb:"1962-02-19", geschlecht:"männlich",
+      sprache:"deutsch, bei Fachbegriffen übersetzt die Tochter",
+      fall:"1024630", station:"Station 3A", zimmer:"311 / 1", pflegekraft:"AK",
+      aufnDatum:d1, aufnZeit:"14:05", aufnArt:"Einweisung Hausarzt",
+      kasse:"BARMER", hausarzt:"Dr. med. Ahrens, Baunatal",
+      diagnose:"Diabetisches Fußsyndrom mit Ulkus Großzehe rechts",
+      nebendiagnosen:"Diabetes mellitus Typ 2, insulinpflichtig\nPolyneuropathie\nNiereninsuffizienz Stadium 3\nAdipositas",
+      groesse:"178", gewicht:"94",
+      allergien:"Jodhaltiges Kontrastmittel (Kreislaufreaktion)",
+      angehName:"Elif Yildiz", angehBez:"Tochter", angehTel:"0176 33221100",
+      betreuung:"keine", patverf:"liegt nicht vor", auskunft:"Ehefrau und Tochter"
+    },
+    anam:{
+      vorerkrankungen:"Diabetes mellitus Typ 2 seit 2005, seit 2018 insulinpflichtig; Polyneuropathie mit vermindertem Schmerzempfinden an beiden Füßen; eingeschränkte Nierenfunktion",
+      hausmedikation:"Insulin spritzt er selbstständig, BZ-Messung unregelmäßig, Werte werden nicht notiert",
+      nikotin:"ca. 10 Zigaretten täglich", alkohol:"keiner",
+      wohnsituation:"Einfamilienhaus, Bad im Obergeschoss",
+      lebtMit:"Ehefrau", beruf:"Lagerist, aktuell krankgeschrieben", pflegegrad:"keiner",
+      versorgung:"Podologische Behandlung war zuletzt vor über einem Jahr, Rezept soll neu ausgestellt werden.",
+      ernaehrung:"Diabeteskost, isst gern süßen Tee. Trinkmenge etwa 2 l täglich.",
+      mobilitaet:"Selbstständig mobil, Gangbild unsicher wegen der Polyneuropathie. Vorfußentlastungsschuh rechts seit gestern.",
+      kognition:"wach und orientiert",
+      ressourcen:"Möchte lernen, seine Füße selbst richtig zu kontrollieren. Tochter unterstützt.",
+      hilfsmittel:"Vorfußentlastungsschuh rechts, Lesebrille",
+      datum:d1, hz:"AK"
+    },
+    braden:{empfinden:"3", feuchtigkeit:"4", aktivitaet:"4", mobilitaet:"4", ernaehrung:"3", reibung:"3",
+      datum:d1, hz:"AK", massnahmen:"Tägliche Inspektion beider Füße, druckentlastende Lagerung im Bett, Schuhwerk kontrollieren."},
+    sturz:{f2:true, f4:true, f10:true, datum:d1, hz:"AK",
+      massnahmen:"Nachtlicht, Weg zur Toilette freihalten, festes Schuhwerk beim Aufstehen."},
+    nrs:{zustand:"0", schwere:"1", alter:"0", datum:d1, hz:"AK",
+      massnahmen:"Kein erhöhtes Risiko, Screening in einer Woche wiederholen. Diabeteskost, Ernährungsberatung angefragt."},
+    hkopf:{datum:d0, hzF:"AK", hzS:"SB", hzN:"MS"},
+    handlungen,
+    vital:[
+      {datum:d1, zeit:"14:30", rrSys:"152", rrDia:"88", puls:"84", temp:"37.6", af:"16", spo2:"96", bz:"248", schmerzRuhe:"0", schmerzBewegung:"1", gewicht:"94", hz:"AK"},
+      {datum:d1, zeit:"21:00", rrSys:"146", rrDia:"84", puls:"80", temp:"37.3", af:"16", spo2:"97", bz:"186", schmerzRuhe:"0", schmerzBewegung:"1", hz:"MS"},
+      {datum:d0, zeit:"06:35", rrSys:"140", rrDia:"82", puls:"76", temp:"37.0", af:"16", spo2:"97", bz:"142", schmerzRuhe:"0", schmerzBewegung:"0", hz:"AK"},
+      {datum:d0, zeit:"17:00", rrSys:"144", rrDia:"86", puls:"78", temp:"37.1", af:"16", spo2:"97", bz:"165", schmerzRuhe:"0", schmerzBewegung:"1", hz:"SB"}
+    ],
+    tage:[
+      {datum:d1, kost:"Diabeteskost", stuhlAnzahl:"1", stuhlArt:"geformt", einfuhr:"1200", hz:"AK"},
+      {datum:d0, kost:"Diabeteskost", stuhlAnzahl:"1", stuhlArt:"geformt", einfuhr:"1500", hz:"AK"}
+    ],
+    zugaenge:[
+      {art:"Peripherer Venenkatheter (PVK)", ort:"Unterarm rechts", gelegt:d1, kontrolle:"reizlos, gut durchgängig", hz:"AK", bemerkung:"für die Antibiotikagabe"}
+    ],
+    anordnungen:[
+      {datum:d1, zeit:"14:40", art:"Diagnostik", text:"Angiologische Gefäßdarstellung beider Beine bei Verdacht auf pAVK", arzt:"Dr. Faber", muendlich:false, uebernommen:"SB", status:"offen", hz:""},
+      {datum:d1, zeit:"14:45", art:"Kostform", text:"Diabeteskost, BZ-Ziel 100–160 mg/dl", arzt:"Dr. Faber", muendlich:false, uebernommen:"AK", status:"läuft", hz:"AK"}
+    ],
+    diagnostik:[
+      {datum:tagVersetzt(1), zeit:"10:30", name:"Angiologie beider Beine", ort:"Angiologie, Ebene 2", vorbereitung:"keine besondere Vorbereitung, Kompressionsstrümpfe vor der Untersuchung ausziehen", nuechtern:false, transport:"selbstständig", status:"Termin steht", hz:""}
+    ],
+    dauer:[
+      {name:"Unacid", wirkstoff:"Ampicillin + Sulbactam", staerke:"3 g", form:"Kurzinfusion i.v.", morgens:"1", mittags:"1", abends:"1", hinweis:"08:00 / 16:00 / 24:00", angeordnet:"Dr. Faber " + dmy(d1)},
+      {name:"Lantus", wirkstoff:"Insulin glargin", staerke:"22 I.E.", form:"Pen s.c.", nachts:"1", hinweis:"22:00, Spritzstellen wechseln", angeordnet:"Dr. Faber " + dmy(d1)},
+      {name:"NovoRapid", wirkstoff:"Insulin aspart", staerke:"nach Plan", form:"Pen s.c.", morgens:"1", mittags:"1", abends:"1", hinweis:"nach BZ-Schema, direkt vor der Mahlzeit", angeordnet:"Dr. Faber " + dmy(d1)},
+      {name:"Delix", wirkstoff:"Ramipril", staerke:"5 mg", form:"Tablette", morgens:"1", hinweis:"RR vor der Gabe kontrollieren", angeordnet:"Dr. Faber " + dmy(d1)},
+      {name:"ASS", wirkstoff:"Acetylsalicylsäure", staerke:"100 mg", form:"Tablette", morgens:"1", hinweis:"nach dem Frühstück", angeordnet:"Dr. Faber " + dmy(d1)},
+      {name:"Sortis", wirkstoff:"Atorvastatin", staerke:"40 mg", form:"Tablette", abends:"1", angeordnet:"Dr. Faber " + dmy(d1)}
+    ],
+    bedarf:[
+      {name:"NovoRapid", wirkstoff:"Insulin aspart", dosis:"nach Korrekturschema", applikation:"s.c.", indikation:"BZ über 250 mg/dl", maxTag:"nach Plan", abstand:"4 Std."},
+      {name:"ben-u-ron", wirkstoff:"Paracetamol", dosis:"1 g", applikation:"p.o.", indikation:"Schmerz oder Temperatur über 38,5 °C", maxTag:"4 g", abstand:"6 Std."}
+    ],
+    gaben:[
+      {datum:d0, zeit:"06:40", name:"NovoRapid", wirkstoff:"Insulin aspart", dosis:"8 I.E.", applikation:"s.c.", gegeben:true, hz:"AK", bemerkung:"BZ 142 mg/dl, Bauchdecke links"},
+      {datum:d0, zeit:"08:00", name:"Unacid", wirkstoff:"Ampicillin + Sulbactam", dosis:"3 g", applikation:"i.v. Kurzinfusion", gegeben:true, hz:"AK", bemerkung:"über 30 Minuten, gut vertragen"}
+    ],
+    wunden:[
+      {datum:d0, zeit:"08:30", lokalisation:"Großzehe rechts, plantar", art:"Diabetisches Fußsyndrom", kategorie:"Kategorie 3",
+       laenge:"2.0", breite:"1.5", tiefe:"0.5",
+       wundgrund:"60 % Granulation, 40 % Fibrin", exsudatMenge:"mäßig", exsudatArt:"serös-trüb", geruch:"leicht",
+       wundrand:"hyperkeratotisch, Schwiele umlaufend", umgebung:"trockene, rissige Haut, leichte Rötung", schmerz:"0",
+       reinigung:"NaCl 0,9 %, Kompressen", auflage:"Alginat, darüber Schaumverband",
+       naechsterVw:tagVersetzt(1), hz:"AK",
+       bemerkung:"Patient gibt keinen Wundschmerz an – bei Polyneuropathie fehlt das Warnsignal, deshalb ist die Sichtkontrolle entscheidend. Vorfußentlastungsschuh wird getragen."}
+    ],
+    bericht:[
+      {datum:d1, zeit:"15:00", schicht:"Spätdienst", hz:"SB",
+       text:"Aufnahme über den Hausarzt. Ulkus an der rechten Großzehe seit etwa drei Wochen, dem Patienten erst durch Blut im Strumpf aufgefallen. Blutzucker bei Aufnahme 248 mg/dl. Vorfußentlastungsschuh angepasst, Gehstrecke damit sicher. Patient wirkt betroffen, sagt, er habe die Füße nie kontrolliert."},
+      {datum:d0, zeit:"17:45", schicht:"Spätdienst", hz:"SB",
+       text:"Anleitung zur täglichen Fußinspektion mit Handspiegel, gemeinsam durchgeführt. Patient konnte anschließend selbst zeigen, worauf er achtet. Wunsch nach einem Podologie-Rezept an den Stationsarzt weitergegeben. Tochter war anwesend und hat übersetzt, wo es um Fachbegriffe ging."}
+    ]
+  });
+}
+
+/* ---------- Zimmer 313/2: Lieselotte Sander, Apoplex ---------- */
+function patientSander(){
+  const dAuf = tagVersetzt(-6), d1 = tagVersetzt(-1), d0 = heute();
+  const handlungen = planSetzen(katalogNeu(), [
+    ["Positionswechsel nach Bewegungsplan","alle 2 Std."],
+    ["Mund- und Zahnpflege","alle 4 Std."],
+    ["Kontrakturprophylaxe","3x täglich"],
+    ["Aspirationsprophylaxe","bei jeder Nahrungsgabe"],
+    ["Soor- und Parotitisprophylaxe","alle 4 Std."],
+    ["Katheterpflege","2x täglich"]
+  ]);
+  hakenSetzen(handlungen, [
+    ["Vitalzeichenkontrolle","f","06:00","AK"],
+    ["Ganzkörperwaschung","f","07:30","AK","im Bett, Aktivierung der rechten Seite nach Bobath"],
+    ["Mund- und Zahnpflege","f","08:00","AK"],
+    ["Mund- und Zahnpflege","s","16:00","SB"],
+    ["Mund- und Zahnpflege","n","00:30","MS"],
+    ["Positionswechsel nach Bewegungsplan","f","08:15","AK","30-Grad-Seitenlage links"],
+    ["Positionswechsel nach Bewegungsplan","s","14:30","SB","Rückenlage mit Fersenfreilagerung"],
+    ["Positionswechsel nach Bewegungsplan","n","02:00","MS"],
+    ["Kontrakturprophylaxe","f","09:00","AK","passives Durchbewegen rechter Arm und Bein"],
+    ["Hautpflege und Hautinspektion","f","07:50","AK","Ferse rechts siehe Wunddokumentation"],
+    ["Katheterpflege","f","07:40","AK"],
+    ["Angehörigengespräch","s","17:00","SB","Tochter über Verlegung in die Neuro-Reha informiert"]
+  ]);
+  return patientBauen({
+    stamm:{
+      nachname:"Sander", vorname:"Lieselotte", geb:"1938-11-23", geschlecht:"weiblich",
+      sprache:"deutsch, Aphasie – versteht mehr, als sie äußern kann",
+      fall:"1024588", station:"Station 3A", zimmer:"313 / 2", pflegekraft:"AK",
+      aufnDatum:dAuf, aufnZeit:"03:40", aufnArt:"Notaufnahme",
+      kasse:"AOK Hessen", hausarzt:"Dr. med. Sanders, Wolfhagen",
+      diagnose:"Mediainfarkt links mit Hemiparese rechts",
+      nebendiagnosen:"Vorhofflimmern\nArterielle Hypertonie\nZ. n. Apoplex 2019\nSchluckstörung",
+      groesse:"158", gewicht:"52",
+      isolation:"Kontaktisolierung", keim:"MRSA im Nasenabstrich",
+      angehName:"Renate Sander", angehBez:"Tochter", angehTel:"05692 445566",
+      betreuung:"Vorsorgevollmacht", patverf:"liegt vor", auskunft:"Tochter Renate Sander"
+    },
+    anam:{
+      vorerkrankungen:"Vorhofflimmern, Bluthochdruck, Schlaganfall 2019 mit vollständiger Rückbildung",
+      wohnsituation:"vor der Aufnahme im eigenen Haus, Tochter im gleichen Ort",
+      lebtMit:"allein", pflegegrad:"2",
+      kognition:"Wach, öffnet die Augen auf Ansprache, Aphasie. Nickt und schüttelt den Kopf zuverlässig.",
+      datum:dAuf, hz:"AK"
+    },
+    braden:{empfinden:"2", feuchtigkeit:"2", aktivitaet:"1", mobilitaet:"2", ernaehrung:"2", reibung:"1",
+      datum:d1, hz:"AK",
+      massnahmen:"Positionswechsel alle 2 Stunden nach Bewegungsplan, Weichlagerungsmatratze, Fersen frei lagern, Hautinspektion bei jedem Wechsel, Mikrolagerung nachts."},
+    sturz:{f1:true, f2:true, f5:true, f6:true, f7:true, f8:true, f10:true, datum:d1, hz:"AK",
+      massnahmen:"Bett in niedrigster Position, Seitenteile nach Rücksprache mit der Tochter, Klingelmatte, keine Mobilisation ohne zweite Person."},
+    nrs:{zustand:"2", schwere:"2", alter:"1", datum:d1, hz:"AK",
+      massnahmen:"Sondenkost nach Plan, Gewicht wöchentlich, Logopädie zur Schluckdiagnostik angemeldet."},
+    hkopf:{datum:d0, hzF:"AK", hzS:"SB", hzN:"MS"},
+    handlungen,
+    vital:[
+      {datum:d1, zeit:"06:00", rrSys:"168", rrDia:"92", puls:"88", temp:"37.1", af:"18", spo2:"95", schmerzRuhe:"0", schmerzBewegung:"2", hz:"AK"},
+      {datum:d1, zeit:"18:00", rrSys:"158", rrDia:"88", puls:"84", temp:"37.3", af:"18", spo2:"96", schmerzRuhe:"0", schmerzBewegung:"2", hz:"SB"},
+      {datum:d0, zeit:"06:00", rrSys:"152", rrDia:"86", puls:"80", temp:"36.8", af:"17", spo2:"96", schmerzRuhe:"0", schmerzBewegung:"1", gewicht:"52", hz:"AK"}
+    ],
+    tage:[
+      {datum:d1, kost:"Sondenkost", stuhlAnzahl:"0", einfuhr:"1500", urin:"1100", hz:"AK"},
+      {datum:d0, kost:"Sondenkost", stuhlAnzahl:"1", stuhlArt:"breiig", einfuhr:"1450", urin:"1250", hz:"AK"}
+    ],
+    zugaenge:[
+      {art:"Magensonde", ort:"nasogastral, rechtes Nasenloch", gelegt:tagVersetzt(-5), kontrolle:"Lage kontrolliert, Nasenflügel reizlos", hz:"AK", bemerkung:"Sondenkost nach Plan, Oberkörper 30 Grad hoch"},
+      {art:"Blasenkatheter transurethral", ort:"Ch 12", gelegt:dAuf, kontrolle:"Urin klar", hz:"AK", bemerkung:"Entfernung wird täglich geprüft"},
+      {art:"Peripherer Venenkatheter (PVK)", ort:"Unterarm links", gelegt:d1, kontrolle:"reizlos", hz:"SB", bemerkung:"Wechsel nach Standard"}
+    ],
+    dauer:[
+      {name:"Eliquis", wirkstoff:"Apixaban", staerke:"2,5 mg", form:"Tablette, über Sonde gemörsert", morgens:"1", abends:"1", hinweis:"Rücksprache Apotheke zur Sondengabe erfolgt", angeordnet:"Dr. Faber " + dmy(dAuf)},
+      {name:"Delix", wirkstoff:"Ramipril", staerke:"5 mg", form:"Tablette", morgens:"1", hinweis:"RR vor der Gabe", angeordnet:"Dr. Faber " + dmy(dAuf)},
+      {name:"Norvasc", wirkstoff:"Amlodipin", staerke:"5 mg", form:"Tablette", morgens:"1", angeordnet:"Dr. Faber " + dmy(dAuf)},
+      {name:"Pantozol", wirkstoff:"Pantoprazol", staerke:"40 mg", form:"Tablette", morgens:"1", hinweis:"nüchtern über die Sonde", angeordnet:"Dr. Faber " + dmy(dAuf)}
+    ],
+    bedarf:[
+      {name:"ben-u-ron", wirkstoff:"Paracetamol", dosis:"1 g", applikation:"über Sonde", indikation:"Temperatur über 38,5 °C", maxTag:"3 g", abstand:"8 Std."}
+    ],
+    gaben:[
+      {datum:d0, zeit:"08:10", name:"Eliquis", wirkstoff:"Apixaban", dosis:"2,5 mg", applikation:"über Magensonde", gegeben:true, hz:"AK", bemerkung:"gemörsert, Sonde vor und nach der Gabe gespült"}
+    ],
+    wunden:[
+      {datum:d0, zeit:"07:50", lokalisation:"Ferse rechts", art:"Dekubitus", kategorie:"Kategorie 2",
+       laenge:"2.5", breite:"2.0", tiefe:"0.1",
+       wundgrund:"oberflächlicher Hautdefekt, rosiger Wundgrund", exsudatMenge:"gering", exsudatArt:"serös", geruch:"geruchlos",
+       wundrand:"reizlos", umgebung:"Rötung, nicht wegdrückbar", schmerz:"",
+       reinigung:"NaCl 0,9 %", auflage:"dünner Schaumverband, Ferse vollständig freigelagert",
+       naechsterVw:tagVersetzt(2), hz:"AK",
+       bemerkung:"Schmerzangabe wegen der Aphasie nicht möglich – Beobachtung von Mimik und Abwehrbewegungen. Fersenfreilagerung mit Kissen bei jeder Positionierung kontrollieren."}
+    ],
+    bericht:[
+      {datum:d1, zeit:"09:20", schicht:"Frühdienst", hz:"AK",
+       text:"Ganzkörperwaschung im Bett unter Aktivierung der rechten Seite. Patientin hält beim Waschen den Blickkontakt und folgt Aufforderungen verzögert. Beim Positionieren Abwehrbewegung mit dem linken Arm, Mimik angespannt – Vorgehen langsamer wiederholt, danach entspannter."},
+      {datum:d0, zeit:"17:10", schicht:"Spätdienst", hz:"SB",
+       text:"Tochter zu Besuch, Gespräch über die geplante Verlegung in die Neuro-Reha. Sie berichtet, dass die Mutter früher gern Radio gehört hat; Radio ans Bett gestellt, Patientin wirkt dabei ruhiger. Hinweis zur Kontaktisolierung wiederholt und Schutzkittel gezeigt."}
+    ]
+  });
+}
+
+/* ---------- Zimmer 314/1: Jonas Petersen, Neuaufnahme ---------- */
+function patientPetersen(){
+  const d0 = heute();
+  return patientBauen({
+    stamm:{
+      nachname:"Petersen", vorname:"Jonas", geb:"2002-05-08", geschlecht:"männlich", sprache:"deutsch",
+      fall:"1024701", station:"Station 3A", zimmer:"314 / 1",
+      aufnDatum:d0, aufnZeit:"09:20", aufnArt:"Notaufnahme",
+      kasse:"DAK", hausarzt:"Dr. med. Vogel, Kassel",
+      diagnose:"Verdacht auf akute Appendizitis",
+      groesse:"183", gewicht:"78",
+      angehName:"Birgit Petersen", angehBez:"Mutter", angehTel:"0170 5566778",
+      betreuung:"keine", auskunft:"nur an die Mutter nach Rückfrage",
+      auskunftssperre:true,
+      sperreNotiz:"Möchte nicht, dass Anrufer erfahren, dass er hier liegt – auch Arbeitgeber und Freunden gegenüber keine Bestätigung des Aufenthalts."
+    },
+    hkopf:{datum:d0},
+    vital:[
+      {datum:d0, zeit:"09:35", rrSys:"128", rrDia:"72", puls:"96", temp:"38.2", af:"18", spo2:"98", schmerzRuhe:"5", schmerzBewegung:"8", hz:"AK"}
+    ],
+    tage:[
+      {datum:d0, kost:"nüchtern", hz:"AK"}
+    ],
+    zugaenge:[
+      {art:"Peripherer Venenkatheter (PVK)", ort:"Ellenbeuge links", gelegt:d0, kontrolle:"reizlos", hz:"AK", bemerkung:"18 G, für Infusion und mögliche OP"}
+    ],
+    bericht:[
+      {datum:d0, zeit:"09:40", schicht:"Frühdienst", hz:"AK",
+       text:"Übernahme aus der Notaufnahme. Schmerzen im rechten Unterbauch seit gestern Abend, seit heute Morgen deutlich stärker. Bleibt nüchtern, Sonografie und Laborkontrolle sind angemeldet. Pflegeanamnese und Assessments stehen noch aus."}
+    ]
+  });
+}
+
+/* ---------- Station zusammenstellen ---------- */
+function stationAufbauen(){
+  BETTEN = [];
+  ZIMMERPLAN.forEach(([zimmer, anzahl]) => {
+    for (let b = 1; b <= anzahl; b++){
+      BETTEN.push({zimmer, bett:String(b), status:"frei", grund:"", bemerkung:"", patient:null});
+    }
+  });
+  const belegen = (zimmer, bett, patient) => {
+    const platz = BETTEN.find(x => x.zimmer === zimmer && x.bett === bett);
+    if (!platz) return;
+    platz.status = "belegt";
+    platz.patient = patient;
+    patient.stamm.station = STATIONSNAME;
+    patient.stamm.zimmer = zimmer + " / " + bett;
+  };
+  const sperren = (zimmer, bett, grund, bemerkung) => {
+    const platz = BETTEN.find(x => x.zimmer === zimmer && x.bett === bett);
+    if (!platz) return;
+    platz.status = "gesperrt"; platz.grund = grund; platz.bemerkung = bemerkung || "";
+  };
+  belegen("310","1", patientKowalski());
+  belegen("311","1", patientYildiz());
+  belegen("312","2", patientBrenner());
+  belegen("313","2", patientSander());
+  belegen("314","1", patientPetersen());
+  sperren("313","1","Infektionszimmer / Isolierung","Kontaktisolierung in Bett 2, zweiter Platz bleibt frei");
+  sperren("315","1","Wahlleistung Einzelzimmer","Einzelzimmer nur für Wahlleistungspatienten");
+}
+
+/* ================= Kopfhöhe für die klebende Navigation ================= */
+function kopfhoeheSetzen(){
+  const k = document.querySelector(".kopfbereich");
+  if (k) document.documentElement.style.setProperty("--kopfhoehe", k.offsetHeight + "px");
+}
+window.addEventListener("resize", kopfhoeheSetzen);
+window.addEventListener("orientationchange", () => setTimeout(kopfhoeheSetzen, 250));
+
+/* ================= Start ================= */
+stationAufbauen();
+AKTIV = BETTEN.findIndex(b => b.status === "belegt");
+Z = AKTIV >= 0 ? BETTEN[AKTIV].patient : leerZustand();
+allesZeichnen();
+seiteZeigen("station");
+kopfhoeheSetzen();
+setTimeout(kopfhoeheSetzen, 300);
+</script>
+</body>
+</html>
